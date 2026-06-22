@@ -4,8 +4,6 @@ import { isDemoMode, getDemoBookings, DEMO_EVENT } from '@/lib/demo-store'
 import { sendTicketEmail } from '@/lib/email'
 import { rateLimit, clientIp } from '@/lib/rate-limit'
 
-const EXPECTED_PIN = process.env.USHER_PIN ?? '0000'
-
 const ResendSchema = z.object({
   bookingRef: z.string().trim().min(3).max(32),
 })
@@ -14,10 +12,6 @@ export async function POST(req: NextRequest) {
   // 10 resends per admin IP per minute — generous for event-day use
   const rl = rateLimit(`resend:${clientIp(req)}`, 10, 60 * 1000)
   if (!rl.ok) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
-
-  if (req.headers.get('x-admin-pin') !== EXPECTED_PIN) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
 
   try {
     const { bookingRef } = ResendSchema.parse(await req.json())

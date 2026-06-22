@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isDemoMode, getDemoBookings } from '@/lib/demo-store'
 
-const EXPECTED_PIN = process.env.USHER_PIN ?? '0000'
 const NO_STORE = { 'Cache-Control': 'no-store' }
 
 export async function GET(req: NextRequest) {
-  if (req.headers.get('x-admin-pin') !== EXPECTED_PIN) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   const rawSearch = req.nextUrl.searchParams.get('search')?.trim().slice(0, 100) ?? ''
   const limit     = Math.min(Math.max(parseInt(req.nextUrl.searchParams.get('limit')  ?? '50'), 1), 100)
   const offset    = Math.max(parseInt(req.nextUrl.searchParams.get('offset') ?? '0'), 0)

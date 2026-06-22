@@ -3,11 +3,8 @@ import { z } from 'zod'
 import { isDemoMode, getDemoBookings, getDemoSeats } from '@/lib/demo-store'
 import { rateLimit, clientIp } from '@/lib/rate-limit'
 
-const EXPECTED_PIN = process.env.USHER_PIN ?? '0000'
-
 const ScanSchema = z.object({
   bookingRef: z.string().trim().min(3).max(32),
-  pin: z.string(),
   usherName: z.string().trim().max(80).optional().default('Usher'),
 })
 
@@ -23,12 +20,8 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { bookingRef, pin, usherName } = ScanSchema.parse(body)
+    const { bookingRef, usherName } = ScanSchema.parse(body)
     const ref = bookingRef.trim().toUpperCase()
-
-    if (pin !== EXPECTED_PIN) {
-      return NextResponse.json({ error: 'Invalid PIN' }, { status: 401 })
-    }
 
     if (isDemoMode()) {
       const bookings = getDemoBookings()

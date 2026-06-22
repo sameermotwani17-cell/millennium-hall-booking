@@ -30,11 +30,8 @@ function statusStyle(s: string) {
 }
 
 export default function AdminPage() {
-  const [pin, setPin]               = useState('')
-  const [pinVerified, setPinVerified] = useState(false)
-  const [pinError, setPinError]     = useState('')
-  const [verifying, setVerifying]   = useState(false)
-  const [adminName, setAdminName]   = useState('Admin')
+  const [adminName, setAdminName]   = useState('')
+  const [nameSubmitted, setNameSubmitted] = useState(false)
 
   const [manualRef, setManualRef]   = useState('')
   const [result, setResult]         = useState<ScanResult | null>(null)
@@ -68,17 +65,17 @@ export default function AdminPage() {
   // ── Stats ────────────────────────────────────────────────────────────────
   const loadStats = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/stats', { headers: { 'x-admin-pin': pin } })
+      const res = await fetch('/api/admin/stats')
       if (res.ok) setStats(await res.json())
     } catch {}
-  }, [pin])
+  }, [])
 
   useEffect(() => {
-    if (!pinVerified) return
+    if (!nameSubmitted) return
     loadStats()
     const id = setInterval(loadStats, 10_000)
     return () => clearInterval(id)
-  }, [pinVerified, loadStats])
+  }, [nameSubmitted, loadStats])
 
   // ── Guest list ───────────────────────────────────────────────────────────
   const loadBookings = useCallback(async (search: string, offset: number) => {
@@ -90,7 +87,6 @@ export default function AdminPage() {
       const params = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(offset) })
       if (search) params.set('search', search)
       const res = await fetch(`/api/admin/bookings?${params}`, {
-        headers: { 'x-admin-pin': pin },
         signal: ctrl.signal,
       })
       if (!res.ok) return
@@ -102,34 +98,22 @@ export default function AdminPage() {
     } finally {
       setBookingsLoading(false)
     }
-  }, [pin])
+  }, [])
 
   // Debounce search
   useEffect(() => {
-    if (!pinVerified) return
+    if (!nameSubmitted) return
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => { setBookingOffset(0); loadBookings(bookingSearch, 0) }, 300)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [bookingSearch, pinVerified, loadBookings])
+  }, [bookingSearch, nameSubmitted, loadBookings])
 
   // Reload on page change
   useEffect(() => {
-    if (!pinVerified) return
+    if (!nameSubmitted) return
     loadBookings(searchRef.current, bookingOffset)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookingOffset, pinVerified])
-
-  // ── PIN gate (server-verified) ────────────────────────────────────────────
-  const verifyPin = async () => {
-    if (pin.length < 4) { setPinError('Enter a 4-digit PIN'); return }
-    setVerifying(true); setPinError('')
-    try {
-      const res = await fetch('/api/admin/stats', { headers: { 'x-admin-pin': pin } })
-      if (res.ok) { setStats(await res.json()); setPinVerified(true) }
-      else setPinError('Incorrect PIN – try again')
-    } catch { setPinError('Connection error – try again') }
-    finally { setVerifying(false) }
-  }
+  }, [bookingOffset, nameSubmitted])
 
   // ── Scan ─────────────────────────────────────────────────────────────────
   const scanRef = useCallback(async (ref: string) => {
@@ -139,7 +123,7 @@ export default function AdminPage() {
       const res = await fetch('/api/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingRef: ref.trim().toUpperCase(), pin, usherName: adminName }),
+        body: JSON.stringify({ bookingRef: ref.trim().toUpperCase(), usherName: adminName || 'Usher' }),
       })
       const data = await res.json()
       setResult(res.ok ? { valid: true, ...data } : { valid: false, error: data.error })
@@ -151,7 +135,7 @@ export default function AdminPage() {
       setLoading(false); setManualRef('')
       setTimeout(() => { setScanStatus('idle'); lastScannedRef.current = null }, 3000)
     }
-  }, [loading, pin, adminName, loadStats, loadBookings])
+  }, [loading, adminName, loadStats, loadBookings])
 
   // ── Camera ────────────────────────────────────────────────────────────────
   const startCamera = useCallback(async () => {
@@ -195,7 +179,7 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/admin/resend', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-pin': pin },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bookingRef: ref }),
       })
       setResendStates(s => ({ ...s, [ref]: res.ok ? 'sent' : 'error' }))
@@ -205,10 +189,10 @@ export default function AdminPage() {
       setResendStates(s => ({ ...s, [ref]: 'error' }))
       setTimeout(() => setResendStates(s => ({ ...s, [ref]: 'idle' })), 4000)
     }
-  }, [pin])
+  }, [])
 
-  // ── PIN GATE ──────────────────────────────────────────────────────────────
-  if (!pinVerified) {
+  // ── NAME GATE ─────────────────────────────────────────────────────────────
+  if (!nameSubmitted) {
     return (
       <main className="min-h-screen bg-[#080808] flex items-center justify-center px-6">
         <div className="w-full max-w-xs">
@@ -223,24 +207,12 @@ export default function AdminPage() {
             <div>
               <label className="text-[10px] tracking-widest uppercase text-white/40 block mb-2 font-mono">Your Name</label>
               <input type="text" value={adminName} onChange={e => setAdminName(e.target.value)}
-                className="admin-input w-full" placeholder="Admin / Usher name" />
+                onKeyDown={e => e.key === 'Enter' && adminName.trim() && setNameSubmitted(true)}
+                className="admin-input w-full" placeholder="Usher name" autoFocus />
             </div>
-            <div>
-              <label className="text-[10px] tracking-widest uppercase text-white/40 block mb-2 font-mono">PIN</label>
-              <input type="password" value={pin}
-                onChange={e => { setPin(e.target.value); setPinError('') }}
-                onKeyDown={e => e.key === 'Enter' && verifyPin()}
-                className="admin-input w-full" placeholder="0000" />
-            </div>
-            {pinError && <p className="text-xs text-[#FF6B6B] font-mono">{pinError}</p>}
-            <button onClick={verifyPin} disabled={verifying}
+            <button onClick={() => setNameSubmitted(true)} disabled={!adminName.trim()}
               className="w-full bg-[#FCD116] hover:bg-[#FFE14D] disabled:opacity-50 text-black font-bold py-3 rounded text-xs tracking-[0.15em] uppercase transition-all">
-              {verifying ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                  Verifying…
-                </span>
-              ) : 'Enter Admin Panel'}
+              Enter Admin Panel
             </button>
           </div>
         </div>
@@ -264,7 +236,7 @@ export default function AdminPage() {
             </div>
             <p className="text-[10px] text-white/30 font-mono">Afro Week 2026 · {adminName}</p>
           </div>
-          <button onClick={() => { stopCamera(); setPinVerified(false); setPin(''); setBookings([]) }}
+          <button onClick={() => { stopCamera(); setNameSubmitted(false); setAdminName(''); setBookings([]) }}
             className="text-xs text-white/30 hover:text-white border border-white/10 rounded px-3 py-1.5 font-mono transition-colors">
             Lock
           </button>
