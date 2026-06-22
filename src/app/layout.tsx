@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Bebas_Neue, Inter } from 'next/font/google'
 import './globals.css'
 import ScrollCinematic from '@/components/ScrollCinematic'
+import VideoAutoplay from '@/components/VideoAutoplay'
 import SiteAudio from '@/components/SiteAudio'
 
 const bebas = Bebas_Neue({
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${bebas.variable} ${inter.variable}`}>
       <body className="bg-[#0A0A0A] text-[#F5F0E8] antialiased">
         <ScrollCinematic />
+        <VideoAutoplay />
         <SiteAudio />
         {children}
       </body>

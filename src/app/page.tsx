@@ -33,6 +33,8 @@ export default async function LandingPage() {
         <div className="absolute inset-0 z-0" data-parallax="0.22">
           <video
             autoPlay muted loop playsInline
+            poster="/afrifest-crew3.jpg"
+            preload="auto"
             className="absolute inset-0 w-full h-full object-cover"
             style={{ filter: 'brightness(0.45) saturate(1.3)' }}
           >
