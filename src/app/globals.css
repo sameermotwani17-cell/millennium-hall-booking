@@ -20,6 +20,7 @@
   --seat-avail:    #00C896;
   --seat-premium:  #FCD116;
   --seat-taken:    #3A1A1A;
+  --seat-reserved: #7A6010;
   --seat-selected: #FF4D4D;
 }
 
@@ -91,6 +92,13 @@ input:-webkit-autofill:active {
   background: var(--seat-taken);
   cursor: not-allowed;
   opacity: 0.45;
+}
+
+.seat-reserved {
+  background: var(--seat-reserved);
+  cursor: not-allowed;
+  opacity: 0.85;
+  box-shadow: 0 0 6px rgba(252,209,22,0.2);
 }
 
 .seat-selected {

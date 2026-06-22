@@ -13,10 +13,11 @@ const SeatBtn = memo(function SeatBtn({
 }: { seat: Seat; isSelected: boolean; onToggle: (id: string) => void }) {
   const unavailable = seat.status === 'reserved' || seat.status === 'taken'
   let cls = 'seat '
-  if (unavailable)     cls += 'seat-taken'
-  else if (isSelected) cls += 'seat-selected'
+  if (seat.status === 'reserved')   cls += 'seat-reserved'
+  else if (seat.status === 'taken') cls += 'seat-taken'
+  else if (isSelected)              cls += 'seat-selected'
   else if (seat.zone === 'premium') cls += 'seat-premium seat-available'
-  else                 cls += 'seat-available'
+  else                              cls += 'seat-available'
 
   return (
     <div
