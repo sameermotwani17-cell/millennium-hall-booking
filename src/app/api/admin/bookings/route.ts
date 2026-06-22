@@ -1,50 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isDemoMode, getDemoBookings } from '@/lib/demo-store'
 
+const EXPECTED_PIN = process.env.USHER_PIN ?? '0000'
+const NO_STORE = { 'Cache-Control': 'no-store' }
+
 export async function GET(req: NextRequest) {
-  const q = (req.nextUrl.searchParams.get('q') ?? '').trim().toLowerCase()
-  const limit = Math.min(parseInt(req.nextUrl.searchParams.get('limit') ?? '100', 10) || 100, 500)
+  if (req.headers.get('x-admin-pin') !== EXPECTED_PIN) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const rawSearch = req.nextUrl.searchParams.get('search')?.trim().slice(0, 100) ?? ''
+  const limit     = Math.min(Math.max(parseInt(req.nextUrl.searchParams.get('limit')  ?? '50'), 1), 100)
+  const offset    = Math.max(parseInt(req.nextUrl.searchParams.get('offset') ?? '0'), 0)
+  const q         = rawSearch.toLowerCase()
 
   if (isDemoMode()) {
-    let bookings = Array.from(getDemoBookings().values())
-    if (q) {
-      bookings = bookings.filter(
-        b =>
+    const all = Array.from(getDemoBookings().values())
+    const filtered = q
+      ? all.filter(b =>
           b.attendee_name.toLowerCase().includes(q) ||
           b.booking_ref.toLowerCase().includes(q) ||
           b.attendee_email.toLowerCase().includes(q),
-      )
-    }
-    bookings.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        )
+      : all
+    filtered.sort((a, b) => b.created_at.localeCompare(a.created_at))
     return NextResponse.json({
-      bookings: bookings.slice(0, limit).map(b => ({
-        booking_ref: b.booking_ref,
-        attendee_name: b.attendee_name,
-        attendee_email: b.attendee_email,
-        seat_ids: b.seat_ids,
-        status: b.status,
-        created_at: b.created_at,
-        scanned_at: b.scanned_at,
-        scanned_by: b.scanned_by,
-      })),
-    })
+      bookings: filtered.slice(offset, offset + limit),
+      total: filtered.length,
+    }, { headers: NO_STORE })
   }
 
   const { createServiceSupabase } = await import('@/lib/supabase/server')
   const supabase = createServiceSupabase()
 
+  // Escape ilike special chars to prevent wildcard injection
+  const escaped = rawSearch.replace(/([%_\\])/g, '\\$1')
+
   let query = supabase
     .from('bookings')
-    .select('booking_ref, attendee_name, attendee_email, seat_ids, status, created_at, scanned_at, scanned_by')
+    .select('id, booking_ref, attendee_name, attendee_email, seat_ids, status, created_at, scanned_at, scanned_by', { count: 'exact' })
     .order('created_at', { ascending: false })
-    .limit(limit)
+    .range(offset, offset + limit - 1)
 
-  if (q) {
-    query = query.or(`attendee_name.ilike.%${q}%,booking_ref.ilike.%${q}%,attendee_email.ilike.%${q}%`)
+  if (escaped) {
+    query = query.or(
+      `attendee_name.ilike.%${escaped}%,booking_ref.ilike.%${escaped}%,attendee_email.ilike.%${escaped}%`,
+    )
   }
 
-  const { data: bookings, error } = await query
+  const { data: bookings, count, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json({ bookings: bookings ?? [] })
+  return NextResponse.json({ bookings: bookings ?? [], total: count ?? 0 }, { headers: NO_STORE })
 }

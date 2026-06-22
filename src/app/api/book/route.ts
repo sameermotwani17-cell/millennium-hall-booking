@@ -5,15 +5,15 @@ import { sendTicketEmail } from '@/lib/email'
 
 const BookSchema = z.object({
   eventSlug: z.string().default('mh-2026-09-14'),
-  name: z.string().min(2).max(100),
-  email: z.string().email(),
+  name: z.string().trim().min(2).max(100).transform(v => v.replace(/\s+/g, ' ')),
+  email: z.string().trim().email().transform(v => v.toLowerCase()),
   seatIds: z.array(z.string()).min(1).max(1),
 })
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { name, email, seatIds } = BookSchema.parse(body)
+    const { eventSlug, name, email, seatIds } = BookSchema.parse(body)
 
     if (isDemoMode()) {
       const { booking, error } = createDemoBooking({ name, email, seatIds })
@@ -22,7 +22,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ booking }, { status: 201 })
     }
 
-    const { eventSlug } = BookSchema.parse(body)
     const { createServiceSupabase } = await import('@/lib/supabase/server')
     const { createBooking } = await import('@/lib/booking')
 

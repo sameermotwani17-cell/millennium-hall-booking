@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 })
     }
     const seats = Array.from(getDemoSeats().values())
-    return NextResponse.json({ seats, eventId: DEMO_EVENT.id })
+    return NextResponse.json({ seats, eventId: DEMO_EVENT.id }, { headers: { 'Cache-Control': 'no-store' } })
   }
 
   const { createServiceSupabase } = await import('@/lib/supabase/server')
@@ -27,5 +27,5 @@ export async function GET(req: NextRequest) {
     .order('section').order('row_label').order('col_num')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ seats, eventId: event.id })
+  return NextResponse.json({ seats, eventId: event.id }, { headers: { 'Cache-Control': 'no-store' } })
 }

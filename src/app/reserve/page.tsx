@@ -15,6 +15,7 @@ function ReserveContent() {
   const [error, setError] = useState('')
 
   const handleSubmit = async () => {
+    if (loading) return
     if (!form.firstName || !form.lastName || !form.email) { setError('Please fill in all fields.'); return }
     if (!form.email.includes('@')) { setError('Please enter a valid email.'); return }
     if (seatIds.length === 0) { router.push('/seats'); return }

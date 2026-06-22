@@ -172,3 +172,41 @@ input:-webkit-autofill:active {
   object-fit: cover;
   position: absolute;
 }
+
+/* ─── AUTOFILL OVERRIDE ───────────────────────────────
+   Prevents browsers from flashing a white/blue autofill
+   background that makes white text invisible.           */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #111111 inset !important;
+  -webkit-text-fill-color: #F5F0E8 !important;
+  caret-color: #F5F0E8;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+/* ─── ADMIN INPUTS ────────────────────────────────────
+   Solid dark bg + explicit color so text is always
+   readable regardless of browser autofill heuristics.  */
+.admin-input {
+  background: #1C1C1C;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 0.875rem;
+  color: #F5F0E8;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.admin-input:focus {
+  border-color: rgba(252, 209, 22, 0.5);
+}
+.admin-input::placeholder {
+  color: rgba(255, 255, 255, 0.2);
+}
+.admin-input:-webkit-autofill,
+.admin-input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #1C1C1C inset !important;
+  -webkit-text-fill-color: #F5F0E8 !important;
+}
