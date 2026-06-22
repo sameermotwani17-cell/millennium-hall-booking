@@ -90,7 +90,7 @@ function ReserveContent() {
                 type="text" placeholder={f.placeholder} autoComplete={f.autoComplete}
                 value={(form as Record<string, string>)[f.key]}
                 onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
-                className="w-full bg-white/4 border border-white/10 rounded-sm px-3 py-2.5 text-sm text-white placeholder-white/15 focus:outline-none focus:border-[#FCD116]/50 focus:bg-[#FCD116]/4 transition-all"
+                className="input-dark"
               />
             </div>
           ))}
@@ -101,7 +101,7 @@ function ReserveContent() {
             type="email" placeholder="you@example.com" autoComplete="email"
             value={form.email}
             onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-            className="w-full bg-white/4 border border-white/10 rounded-sm px-3 py-2.5 text-sm text-white placeholder-white/15 focus:outline-none focus:border-[#FCD116]/50 focus:bg-[#FCD116]/4 transition-all"
+            className="input-dark"
           />
         </div>
 

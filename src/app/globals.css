@@ -25,10 +25,36 @@
 
 * { box-sizing: border-box; }
 
+html {
+  color-scheme: dark;
+}
+
 body {
   font-family: 'Inter', system-ui, sans-serif;
   background: var(--ink);
   color: var(--white);
+}
+
+/* ─── DARK FORM INPUTS ────────────────────────────────── */
+input, textarea, select {
+  color: #ffffff;
+  caret-color: var(--gold);
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #1a1a1a inset !important;
+  box-shadow: 0 0 0 1000px #1a1a1a inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: var(--gold);
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.input-dark {
+  @apply w-full bg-[#1a1a1a] border border-white/15 rounded-sm px-3 py-2.5 text-sm text-white placeholder-white/30;
+  @apply focus:outline-none focus:border-[#FCD116]/50 focus:bg-[#222] transition-all;
 }
 
 /* ─── SEAT MAP 3D ─────────────────────────────────────── */

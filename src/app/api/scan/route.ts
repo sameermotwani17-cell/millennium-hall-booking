@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { verifyAdminPin } from '@/lib/admin-auth'
 import { isDemoMode, getDemoBookings, getDemoSeats } from '@/lib/demo-store'
 
 const ScanSchema = z.object({
@@ -13,7 +14,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { bookingRef, pin, usherName } = ScanSchema.parse(body)
 
-    if (pin !== process.env.USHER_PIN) {
+    if (!verifyAdminPin(pin)) {
       return NextResponse.json({ error: 'Invalid PIN' }, { status: 401 })
     }
 
@@ -41,8 +42,9 @@ export async function POST(req: NextRequest) {
 
     const { createServiceSupabase } = await import('@/lib/supabase/server')
     const supabase = createServiceSupabase()
+    const ref = bookingRef.trim().toUpperCase()
     const { data: booking } = await supabase
-      .from('bookings').select('*').eq('booking_ref', bookingRef).single()
+      .from('bookings').select('*').eq('booking_ref', ref).single()
 
     if (!booking) return NextResponse.json({ error: 'Booking not found' }, { status: 404 })
     if (booking.status === 'scanned') {

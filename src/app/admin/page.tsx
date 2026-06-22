@@ -6,9 +6,22 @@ type ScanResult =
   | { valid: true; booking_ref: string; attendee_name: string; seats: string[]; status: string }
   | { valid: false; error: string }
 
+type BookingRow = {
+  booking_ref: string
+  attendee_name: string
+  attendee_email: string
+  seat_ids: string[]
+  status: string
+  created_at: string
+  scanned_at: string | null
+  scanned_by: string | null
+}
+
 export default function AdminPage() {
   const [pin, setPin] = useState('')
   const [pinVerified, setPinVerified] = useState(false)
+  const [pinError, setPinError] = useState('')
+  const [pinLoading, setPinLoading] = useState(false)
   const [adminName, setAdminName] = useState('Admin')
   const [manualRef, setManualRef] = useState('')
   const [result, setResult] = useState<ScanResult | null>(null)
@@ -17,6 +30,9 @@ export default function AdminPage() {
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [scanStatus, setScanStatus] = useState<'idle' | 'scanning' | 'found'>('idle')
   const [stats, setStats] = useState<{ total: number; scanned: number; confirmed: number } | null>(null)
+  const [bookings, setBookings] = useState<BookingRow[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [bookingsLoading, setBookingsLoading] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -35,13 +51,50 @@ export default function AdminPage() {
     } catch {}
   }, [pinVerified, pin])
 
-  useEffect(() => {
-    if (pinVerified) { loadStats() }
-  }, [pinVerified, loadStats])
+  const loadBookings = useCallback(async (query = '') => {
+    if (!pinVerified) return
+    setBookingsLoading(true)
+    try {
+      const params = new URLSearchParams()
+      if (query.trim()) params.set('q', query.trim())
+      const res = await fetch(`/api/admin/bookings?${params}`, {
+        headers: { 'x-admin-pin': pin },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setBookings(data.bookings ?? [])
+      }
+    } catch {}
+    finally { setBookingsLoading(false) }
+  }, [pinVerified, pin])
 
-  const verifyPin = () => {
-    if (pin.length >= 4) setPinVerified(true)
-    else alert('Enter a valid PIN')
+  useEffect(() => {
+    if (pinVerified) { loadStats(); loadBookings() }
+  }, [pinVerified, loadStats, loadBookings])
+
+  useEffect(() => {
+    if (!pinVerified) return
+    const timer = setTimeout(() => loadBookings(searchQuery), 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery, pinVerified, loadBookings])
+
+  const verifyPin = async () => {
+    if (pin.length < 4) { setPinError('Enter a 4-digit PIN'); return }
+    setPinLoading(true)
+    setPinError('')
+    try {
+      const res = await fetch('/api/admin/verify-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin }),
+      })
+      if (res.ok) setPinVerified(true)
+      else setPinError('Incorrect PIN — try 0000')
+    } catch {
+      setPinError('Network error — try again')
+    } finally {
+      setPinLoading(false)
+    }
   }
 
   const scanRef = useCallback(async (ref: string) => {
@@ -58,6 +111,7 @@ export default function AdminPage() {
       const data = await res.json()
       setResult(res.ok ? { valid: true, ...data } : { valid: false, error: data.error })
       loadStats()
+      loadBookings(searchQuery)
     } catch {
       setResult({ valid: false, error: 'Network error – try again' })
     } finally {
@@ -65,7 +119,7 @@ export default function AdminPage() {
       setManualRef('')
       setTimeout(() => { setScanStatus('idle'); lastScannedRef.current = null }, 3000)
     }
-  }, [loading, pin, adminName, loadStats])
+  }, [loading, pin, adminName, loadStats, loadBookings, searchQuery])
 
   // Camera QR scanning
   const startCamera = useCallback(async () => {
@@ -148,24 +202,31 @@ export default function AdminPage() {
               <label className="text-[10px] tracking-widest uppercase text-white/30 block mb-2 font-mono">Your Name</label>
               <input
                 type="text" value={adminName} onChange={e => setAdminName(e.target.value)}
-                className="w-full bg-white/4 border border-white/10 rounded px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#FCD116]/40 transition-colors"
+                className="input-dark rounded"
                 placeholder="Admin / Usher name"
               />
             </div>
             <div>
               <label className="text-[10px] tracking-widest uppercase text-white/30 block mb-2 font-mono">PIN</label>
               <input
-                type="password" value={pin} onChange={e => setPin(e.target.value)}
+                type="password" value={pin} onChange={e => { setPin(e.target.value); setPinError('') }}
                 onKeyDown={e => e.key === 'Enter' && verifyPin()}
-                className="w-full bg-white/4 border border-white/10 rounded px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#FCD116]/40 transition-colors"
-                placeholder="••••"
+                className="input-dark rounded"
+                placeholder="0000"
+                maxLength={8}
               />
             </div>
+            {pinError && (
+              <div className="text-xs text-[#FF6B6B] bg-[#C8102E]/10 border border-[#C8102E]/30 rounded px-3 py-2">
+                {pinError}
+              </div>
+            )}
             <button
               onClick={verifyPin}
-              className="w-full bg-[#FCD116] hover:bg-[#FFE14D] text-black font-bold py-3 rounded text-xs tracking-[0.15em] uppercase transition-all"
+              disabled={pinLoading}
+              className="w-full bg-[#FCD116] hover:bg-[#FFE14D] disabled:opacity-40 text-black font-bold py-3 rounded text-xs tracking-[0.15em] uppercase transition-all"
             >
-              Enter Admin Panel
+              {pinLoading ? 'Verifying…' : 'Enter Admin Panel'}
             </button>
           </div>
         </div>
@@ -300,7 +361,7 @@ export default function AdminPage() {
               onChange={e => setManualRef(e.target.value.toUpperCase())}
               onKeyDown={e => e.key === 'Enter' && scanRef(manualRef)}
               placeholder="MH-XXXXXX"
-              className="flex-1 bg-white/4 border border-white/10 rounded px-3 py-2.5 text-base text-white font-mono uppercase tracking-wider focus:outline-none focus:border-[#FCD116]/40 placeholder-white/15 transition-colors"
+              className="input-dark flex-1 rounded font-mono uppercase tracking-wider"
             />
             <button
               onClick={() => scanRef(manualRef)}
@@ -358,6 +419,73 @@ export default function AdminPage() {
             )}
           </div>
         )}
+
+        {/* Bookings list */}
+        <div className="bg-[#111] border border-white/8 rounded-xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/8">
+            <h2 className="text-sm font-semibold text-white tracking-wide">All Bookings</h2>
+            <p className="text-[10px] text-white/30 font-mono mt-0.5">Search by name or ticket reference</p>
+            <div className="mt-3">
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search name or MH-XXXXXX…"
+                className="input-dark rounded"
+              />
+            </div>
+          </div>
+
+          <div className="max-h-80 overflow-y-auto">
+            {bookingsLoading ? (
+              <div className="py-10 text-center text-xs text-white/30 font-mono">Loading bookings…</div>
+            ) : bookings.length === 0 ? (
+              <div className="py-10 text-center text-xs text-white/30 font-mono">
+                {searchQuery ? 'No bookings match your search' : 'No bookings yet'}
+              </div>
+            ) : (
+              <table className="w-full text-left text-xs">
+                <thead className="sticky top-0 bg-[#0D0D0D] text-[9px] tracking-[0.12em] uppercase text-white/30 font-mono">
+                  <tr>
+                    <th className="px-4 py-2.5 font-normal">Name</th>
+                    <th className="px-4 py-2.5 font-normal">Reference</th>
+                    <th className="px-4 py-2.5 font-normal">Seat</th>
+                    <th className="px-4 py-2.5 font-normal">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bookings.map(b => (
+                    <tr
+                      key={b.booking_ref}
+                      className="border-t border-white/5 hover:bg-white/3 cursor-pointer transition-colors"
+                      onClick={() => setManualRef(b.booking_ref)}
+                    >
+                      <td className="px-4 py-3 text-white">{b.attendee_name}</td>
+                      <td className="px-4 py-3 text-[#FCD116] font-mono font-bold">{b.booking_ref}</td>
+                      <td className="px-4 py-3 text-white/70 font-mono">{b.seat_ids.join(', ')}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded text-[9px] tracking-wider uppercase font-mono ${
+                          b.status === 'scanned'
+                            ? 'bg-[#006B3F]/20 text-[#00C896] border border-[#006B3F]/40'
+                            : b.status === 'confirmed'
+                              ? 'bg-[#FCD116]/10 text-[#FCD116] border border-[#FCD116]/30'
+                              : 'bg-white/5 text-white/40 border border-white/10'
+                        }`}>
+                          {b.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+          {!bookingsLoading && bookings.length > 0 && (
+            <div className="px-5 py-2 border-t border-white/8 text-[9px] text-white/25 font-mono">
+              {bookings.length} booking{bookings.length !== 1 ? 's' : ''} shown · tap a row to fill reference
+            </div>
+          )}
+        </div>
       </div>
 
       <style jsx>{`
