@@ -12,7 +12,7 @@ let calls = 0
 function prune() {
   if (++calls % 500 !== 0) return
   const now = Date.now()
-  for (const [k, v] of store) if (now > v.resetAt) store.delete(k)
+  store.forEach((v, k) => { if (now > v.resetAt) store.delete(k) })
 }
 
 /** Returns { ok: true } when within limit, { ok: false, retryAfter } when exceeded. */
