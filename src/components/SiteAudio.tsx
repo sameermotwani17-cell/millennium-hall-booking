@@ -92,7 +92,7 @@ export default function SiteAudio() {
 
   return (
     <>
-      <audio ref={audioRef} src="/lines-they-drew-vo.mp3" preload="metadata" playsInline />
+      <audio ref={audioRef} src="/lines-they-drew.mp4" preload="metadata" playsInline />
 
       {shown && (
         <button
