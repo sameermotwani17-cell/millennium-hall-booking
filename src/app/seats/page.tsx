@@ -14,6 +14,7 @@ const LEGEND = [
   { color: 'bg-[#00C896]', label: 'Available' },
   { color: 'bg-[#FF4D4D]', label: 'Selected' },
   { color: 'bg-[#3A1A1A]', label: 'Taken' },
+  { color: 'bg-[#8B5CF6]', label: 'Held' },
 ]
 
 function SeatsContent() {

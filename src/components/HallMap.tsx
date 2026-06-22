@@ -11,11 +11,12 @@ interface Props {
 const SeatBtn = memo(function SeatBtn({
   seat, isSelected, onToggle,
 }: { seat: Seat; isSelected: boolean; onToggle: (id: string) => void }) {
-  const unavailable = seat.status === 'reserved' || seat.status === 'taken'
+  const unavailable = seat.status === 'reserved' || seat.status === 'taken' || seat.status === 'blocked'
   let cls = 'seat '
-  if (seat.status === 'reserved')   cls += 'seat-reserved'
-  else if (seat.status === 'taken') cls += 'seat-taken'
-  else if (isSelected)              cls += 'seat-selected'
+  if (seat.status === 'reserved')     cls += 'seat-reserved'
+  else if (seat.status === 'taken')   cls += 'seat-taken'
+  else if (seat.status === 'blocked') cls += 'seat-blocked'
+  else if (isSelected)                cls += 'seat-selected'
   else if (seat.zone === 'premium') cls += 'seat-premium seat-available'
   else                              cls += 'seat-available'
 
@@ -256,11 +257,14 @@ export default function HallMap({ onSelectionChange }: Props) {
           minWidth: 1020,
         }}
       >
+        {/* NOTE: transform-style stays flat (the default). The rows all sit in
+            one plane, so 'preserve-3d' added nothing visually but broke touch
+            hit-testing on iOS Safari — taps landed offset from the seat. Flat
+            keeps the identical tilt while making every seat reliably tappable. */}
         <div
           style={{
             transform: 'rotateX(16deg) scale(0.97)',
             transformOrigin: '50% 0',
-            transformStyle: 'preserve-3d',
           }}
         >
           {/* STAGE */}

@@ -22,6 +22,7 @@
   --seat-taken:    #3A1A1A;
   --seat-reserved: #7A6010;
   --seat-selected: #FF4D4D;
+  --seat-blocked:  #8B5CF6;
 }
 
 * { box-sizing: border-box; }
@@ -69,6 +70,18 @@ input:-webkit-autofill:active {
 }
 .seat::after { content: none; }
 
+/* Invisible hit-area expander: the visible dot stays 18px, but bookable seats
+   get a ~30px touch target so taps land reliably on phones (clicks on the
+   pseudo-element still register on the seat). Only bookable seats get this so
+   unavailable seats never steal a neighbour's tap. */
+.seat-available::before,
+.seat-selected::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+}
+
 .seat-available {
   background: var(--seat-avail);
   box-shadow: 0 2px 4px rgba(0,200,150,0.25), inset 0 1px 0 rgba(255,255,255,0.2);
@@ -99,6 +112,14 @@ input:-webkit-autofill:active {
   cursor: not-allowed;
   opacity: 0.85;
   box-shadow: 0 0 6px rgba(252,209,22,0.2);
+}
+
+/* Cast / crew hold — seats occupied by actors, never bookable */
+.seat-blocked {
+  background: var(--seat-blocked);
+  cursor: not-allowed;
+  opacity: 0.9;
+  box-shadow: 0 0 8px rgba(139,92,246,0.45), inset 0 1px 0 rgba(255,255,255,0.15);
 }
 
 .seat-selected {

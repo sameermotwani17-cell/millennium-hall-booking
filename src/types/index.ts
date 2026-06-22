@@ -1,5 +1,5 @@
 export type Zone = 'premium' | 'standard' | 'balcony' | 'side'
-export type SeatStatus = 'available' | 'reserved' | 'taken'
+export type SeatStatus = 'available' | 'reserved' | 'taken' | 'blocked'
 export type BookingStatus = 'confirmed' | 'scanned' | 'cancelled'
 
 export interface Event {
