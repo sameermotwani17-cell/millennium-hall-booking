@@ -1,22 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { verifyAdminPin } from '@/lib/admin-auth'
 import { isDemoMode, getDemoBookings, getDemoSeats } from '@/lib/demo-store'
 
 const ScanSchema = z.object({
   bookingRef: z.string(),
-  pin: z.string(),
   usherName: z.string().optional().default('Usher'),
 })
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { bookingRef, pin, usherName } = ScanSchema.parse(body)
-
-    if (!verifyAdminPin(pin)) {
-      return NextResponse.json({ error: 'Invalid PIN' }, { status: 401 })
-    }
+    const { bookingRef, usherName } = ScanSchema.parse(body)
 
     if (isDemoMode()) {
       const bookings = getDemoBookings()

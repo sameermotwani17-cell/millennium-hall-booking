@@ -7,17 +7,10 @@ type ScanResult =
   | { valid: false; error: string }
 
 export default function UsherPage() {
-  const [pin, setPin] = useState('')
-  const [pinVerified, setPinVerified] = useState(false)
   const [manualRef, setManualRef] = useState('')
   const [result, setResult] = useState<ScanResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [usherName, setUsherName] = useState('Usher')
-
-  const verifyPin = () => {
-    if (pin.length >= 4) setPinVerified(true)
-    else alert('Enter your PIN')
-  }
 
   const scanRef = async (ref: string) => {
     if (!ref.trim()) return
@@ -25,39 +18,12 @@ export default function UsherPage() {
     const res = await fetch('/api/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bookingRef: ref.trim().toUpperCase(), pin, usherName }),
+      body: JSON.stringify({ bookingRef: ref.trim().toUpperCase(), usherName }),
     })
     const data = await res.json()
     setResult(res.ok ? { valid: true, ...data } : { valid: false, error: data.error })
     setLoading(false)
     setManualRef('')
-  }
-
-  if (!pinVerified) {
-    return (
-      <main className="min-h-screen bg-[#0E0904] flex items-center justify-center px-6">
-        <div className="w-full max-w-xs bg-[#140C04] border border-[#C8A97A]/12 rounded-xl p-8">
-          <div className="font-[family-name:var(--font-cormorant)] text-2xl text-[#F0DFC0] mb-1">Usher Panel</div>
-          <p className="text-xs text-[#8A7055] mb-6">Enter your PIN to access the scan panel.</p>
-          <div className="mb-3">
-            <label className="text-[10px] tracking-widest uppercase text-[#8A7055] block mb-1.5">Your Name</label>
-            <input type="text" value={usherName} onChange={e => setUsherName(e.target.value)}
-              className="w-full bg-white/4 border border-[#C8A97A]/15 rounded px-3 py-2 text-sm text-[#F0DFC0] focus:outline-none focus:border-[#C8A97A]/40" />
-          </div>
-          <div className="mb-5">
-            <label className="text-[10px] tracking-widest uppercase text-[#8A7055] block mb-1.5">PIN</label>
-            <input type="password" value={pin} onChange={e => setPin(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && verifyPin()}
-              className="w-full bg-white/4 border border-[#C8A97A]/15 rounded px-3 py-2 text-sm text-[#F0DFC0] focus:outline-none focus:border-[#C8A97A]/40"
-              placeholder="••••" />
-          </div>
-          <button onClick={verifyPin}
-            className="w-full bg-[#C4622D] hover:bg-[#D4703A] text-white py-2.5 rounded text-sm tracking-wider uppercase transition-colors">
-            Enter
-          </button>
-        </div>
-      </main>
-    )
   }
 
   return (
@@ -66,6 +32,17 @@ export default function UsherPage() {
         <div className="text-center mb-8">
           <div className="font-[family-name:var(--font-cormorant)] text-3xl text-[#F0DFC0]">Usher Panel</div>
           <p className="text-xs text-[#8A7055] mt-1">Scan a QR code or enter booking ref manually</p>
+        </div>
+
+        <div className="bg-[#140C04] border border-[#C8A97A]/12 rounded-xl p-6 mb-4">
+          <label className="text-[10px] tracking-widest uppercase text-[#8A7055] block mb-3">Your Name</label>
+          <input
+            type="text"
+            value={usherName}
+            onChange={e => setUsherName(e.target.value)}
+            className="w-full bg-white/4 border border-[#C8A97A]/15 rounded px-3 py-2 text-sm text-[#F0DFC0] focus:outline-none focus:border-[#C8A97A]/40"
+            placeholder="Usher name"
+          />
         </div>
 
         <div className="bg-[#140C04] border border-[#C8A97A]/12 rounded-xl p-6 mb-4">
@@ -114,10 +91,6 @@ export default function UsherPage() {
           </div>
         )}
 
-        <button onClick={() => { setPinVerified(false); setPin(''); setResult(null) }}
-          className="mt-6 w-full border border-[#C8A97A]/15 text-[#8A7055] py-2 rounded text-xs tracking-wider uppercase hover:bg-[#C8A97A]/5 transition-colors">
-          Lock Panel
-        </button>
       </div>
     </main>
   )

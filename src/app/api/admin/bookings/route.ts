@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyAdminPin } from '@/lib/admin-auth'
 import { isDemoMode, getDemoBookings } from '@/lib/demo-store'
 
 export async function GET(req: NextRequest) {
-  const pin = req.headers.get('x-admin-pin')
-  if (!verifyAdminPin(pin)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   const q = (req.nextUrl.searchParams.get('q') ?? '').trim().toLowerCase()
   const limit = Math.min(parseInt(req.nextUrl.searchParams.get('limit') ?? '100', 10) || 100, 500)
 

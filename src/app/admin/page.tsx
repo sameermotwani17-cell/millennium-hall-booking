@@ -18,10 +18,6 @@ type BookingRow = {
 }
 
 export default function AdminPage() {
-  const [pin, setPin] = useState('')
-  const [pinVerified, setPinVerified] = useState(false)
-  const [pinError, setPinError] = useState('')
-  const [pinLoading, setPinLoading] = useState(false)
   const [adminName, setAdminName] = useState('Admin')
   const [manualRef, setManualRef] = useState('')
   const [result, setResult] = useState<ScanResult | null>(null)
@@ -42,60 +38,35 @@ export default function AdminPage() {
 
   // Fetch stats
   const loadStats = useCallback(async () => {
-    if (!pinVerified) return
     try {
-      const res = await fetch('/api/admin/stats', {
-        headers: { 'x-admin-pin': pin },
-      })
+      const res = await fetch('/api/admin/stats')
       if (res.ok) setStats(await res.json())
     } catch {}
-  }, [pinVerified, pin])
+  }, [])
 
   const loadBookings = useCallback(async (query = '') => {
-    if (!pinVerified) return
     setBookingsLoading(true)
     try {
       const params = new URLSearchParams()
       if (query.trim()) params.set('q', query.trim())
-      const res = await fetch(`/api/admin/bookings?${params}`, {
-        headers: { 'x-admin-pin': pin },
-      })
+      const res = await fetch(`/api/admin/bookings?${params}`)
       if (res.ok) {
         const data = await res.json()
         setBookings(data.bookings ?? [])
       }
     } catch {}
     finally { setBookingsLoading(false) }
-  }, [pinVerified, pin])
+  }, [])
 
   useEffect(() => {
-    if (pinVerified) { loadStats(); loadBookings() }
-  }, [pinVerified, loadStats, loadBookings])
+    loadStats()
+    loadBookings()
+  }, [loadStats, loadBookings])
 
   useEffect(() => {
-    if (!pinVerified) return
     const timer = setTimeout(() => loadBookings(searchQuery), 300)
     return () => clearTimeout(timer)
-  }, [searchQuery, pinVerified, loadBookings])
-
-  const verifyPin = async () => {
-    if (pin.length < 4) { setPinError('Enter a 4-digit PIN'); return }
-    setPinLoading(true)
-    setPinError('')
-    try {
-      const res = await fetch('/api/admin/verify-pin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin }),
-      })
-      if (res.ok) setPinVerified(true)
-      else setPinError('Incorrect PIN')
-    } catch {
-      setPinError('Network error — try again')
-    } finally {
-      setPinLoading(false)
-    }
-  }
+  }, [searchQuery, loadBookings])
 
   const scanRef = useCallback(async (ref: string) => {
     if (!ref.trim() || loading) return
@@ -106,7 +77,7 @@ export default function AdminPage() {
       const res = await fetch('/api/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingRef: ref.trim().toUpperCase(), pin, usherName: adminName }),
+        body: JSON.stringify({ bookingRef: ref.trim().toUpperCase(), usherName: adminName }),
       })
       const data = await res.json()
       setResult(res.ok ? { valid: true, ...data } : { valid: false, error: data.error })
@@ -119,7 +90,7 @@ export default function AdminPage() {
       setManualRef('')
       setTimeout(() => { setScanStatus('idle'); lastScannedRef.current = null }, 3000)
     }
-  }, [loading, pin, adminName, loadStats, loadBookings, searchQuery])
+  }, [loading, adminName, loadStats, loadBookings, searchQuery])
 
   // Camera QR scanning
   const startCamera = useCallback(async () => {
@@ -184,56 +155,6 @@ export default function AdminPage() {
 
   useEffect(() => () => stopCamera(), [stopCamera])
 
-  // ── PIN GATE ─────────────────────────────────────────────────────────────
-  if (!pinVerified) {
-    return (
-      <main className="min-h-screen bg-[#080808] flex items-center justify-center px-6">
-        <div className="w-full max-w-xs">
-          <div className="flex gap-1 mb-6">
-            <div className="w-2 h-2 rounded-full bg-[#C8102E]" />
-            <div className="w-2 h-2 rounded-full bg-[#FCD116]" />
-            <div className="w-2 h-2 rounded-full bg-[#006B3F]" />
-          </div>
-          <h1 className="font-[family-name:var(--font-bebas)] text-3xl tracking-wide text-white mb-1">Admin Panel</h1>
-          <p className="text-xs text-white/30 mb-8 font-mono">Afro Week 2026 · Ticket Scanner</p>
-
-          <div className="bg-[#111] border border-white/8 rounded-xl p-6 space-y-4">
-            <div>
-              <label className="text-[10px] tracking-widest uppercase text-white/30 block mb-2 font-mono">Your Name</label>
-              <input
-                type="text" value={adminName} onChange={e => setAdminName(e.target.value)}
-                className="input-dark rounded"
-                placeholder="Admin / Usher name"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] tracking-widest uppercase text-white/30 block mb-2 font-mono">PIN</label>
-              <input
-                type="password" value={pin} onChange={e => { setPin(e.target.value); setPinError('') }}
-                onKeyDown={e => e.key === 'Enter' && verifyPin()}
-                className="input-dark rounded"
-                placeholder="•••••"
-                maxLength={8}
-              />
-            </div>
-            {pinError && (
-              <div className="text-xs text-[#FF6B6B] bg-[#C8102E]/10 border border-[#C8102E]/30 rounded px-3 py-2">
-                {pinError}
-              </div>
-            )}
-            <button
-              onClick={verifyPin}
-              disabled={pinLoading}
-              className="w-full bg-[#FCD116] hover:bg-[#FFE14D] disabled:opacity-40 text-black font-bold py-3 rounded text-xs tracking-[0.15em] uppercase transition-all"
-            >
-              {pinLoading ? 'Verifying…' : 'Enter Admin Panel'}
-            </button>
-          </div>
-        </div>
-      </main>
-    )
-  }
-
   // ── ADMIN PANEL ──────────────────────────────────────────────────────────
   return (
     <main className="min-h-screen bg-[#080808] text-white">
@@ -251,12 +172,13 @@ export default function AdminPage() {
             </div>
             <p className="text-[10px] text-white/30 font-mono">Afro Week 2026 · {adminName}</p>
           </div>
-          <button
-            onClick={() => { stopCamera(); setPinVerified(false); setPin('') }}
-            className="text-xs text-white/30 hover:text-white transition-colors border border-white/10 rounded px-3 py-1.5 font-mono"
-          >
-            Lock
-          </button>
+          <input
+            type="text"
+            value={adminName}
+            onChange={e => setAdminName(e.target.value)}
+            className="input-dark max-w-40 rounded"
+            placeholder="Admin name"
+          />
         </div>
       </div>
 

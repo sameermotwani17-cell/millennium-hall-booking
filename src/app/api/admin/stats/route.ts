@@ -1,13 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { verifyAdminPin } from '@/lib/admin-auth'
+import { NextResponse } from 'next/server'
 import { isDemoMode, getDemoBookings } from '@/lib/demo-store'
 
-export async function GET(req: NextRequest) {
-  const pin = req.headers.get('x-admin-pin')
-  if (!verifyAdminPin(pin)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
+export async function GET() {
   if (isDemoMode()) {
     const bookings = Array.from(getDemoBookings().values())
     return NextResponse.json({
