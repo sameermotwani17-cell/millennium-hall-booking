@@ -226,12 +226,20 @@ export default async function LandingPage() {
             </p>
           </blockquote>
 
-          <Link
-            href="/seats"
-            className="inline-block border-2 border-[#FCD116] text-[#FCD116] hover:bg-[#FCD116] hover:text-black px-10 py-3.5 text-sm tracking-[0.2em] uppercase font-bold transition-all duration-200"
-          >
-            Claim Your Seat →
-          </Link>
+          <div className="flex flex-wrap gap-3 justify-center">
+            <Link
+              href="/the-line"
+              className="inline-block bg-[#FCD116] hover:bg-[#FFE14D] text-black px-10 py-3.5 text-sm tracking-[0.2em] uppercase font-bold transition-all duration-200 hover:-translate-y-0.5"
+            >
+              Watch It Form →
+            </Link>
+            <Link
+              href="/seats"
+              className="inline-block border-2 border-[#FCD116] text-[#FCD116] hover:bg-[#FCD116] hover:text-black px-10 py-3.5 text-sm tracking-[0.2em] uppercase font-bold transition-all duration-200"
+            >
+              Claim Your Seat →
+            </Link>
+          </div>
         </div>
 
         {/* Pan-African stripe bottom */}
