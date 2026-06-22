@@ -7,25 +7,59 @@ export default function ScrollCinematic() {
     // ── Scroll progress bar ─────────────────────────────
     const bar = document.getElementById('sc-progress-bar')
 
+    const reduceMotion =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+    // ── Reveal helpers ──────────────────────────────────
+    // Content defaults to opacity:0 in CSS, so it MUST be revealed by JS.
+    // We never rely on a single mechanism: IntersectionObserver is the
+    // primary path, but a scroll-driven check + a load-time safety net
+    // guarantee content appears even when IO is throttled or never fires
+    // (in-app browsers like Instagram/TikTok, iOS Low Power Mode, etc.).
+    const reveal = (el: Element) => el.classList.add('revealed')
+
+    const revealEls = () =>
+      Array.from(document.querySelectorAll<HTMLElement>('[data-reveal]'))
+
+    // Reveal anything already within (or near) the viewport.
+    const revealInView = () => {
+      const trigger = window.innerHeight * 0.92
+      revealEls().forEach((el) => {
+        if (el.classList.contains('revealed')) return
+        if (el.getBoundingClientRect().top < trigger) reveal(el)
+      })
+    }
+
+    // Reduced motion: skip all animation, just show everything.
+    if (reduceMotion) {
+      revealEls().forEach(reveal)
+      if (bar) bar.style.width = '0%'
+      return
+    }
+
+    // ── Reveal: IntersectionObserver (primary) ───────────
+    let revealObs: IntersectionObserver | null = null
+    if ('IntersectionObserver' in window) {
+      revealObs = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              reveal(entry.target)
+              revealObs?.unobserve(entry.target)
+            }
+          })
+        },
+        { threshold: 0.12, rootMargin: '0px 0px -60px 0px' }
+      )
+      revealEls().forEach((el) => revealObs?.observe(el))
+    }
+
     // ── Parallax: video containers with data-parallax ──
     // Videos must be slightly oversized (height 110%, top -5%) so edges
     // don't become visible as they translate.
     const parallaxTargets = () =>
       Array.from(document.querySelectorAll<HTMLElement>('[data-parallax]'))
-
-    // ── Reveal: any element with data-reveal ────────────
-    const revealObs = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            ;(entry.target as HTMLElement).classList.add('revealed')
-            revealObs.unobserve(entry.target)
-          }
-        })
-      },
-      { threshold: 0.12, rootMargin: '0px 0px -60px 0px' }
-    )
-    document.querySelectorAll('[data-reveal]').forEach((el) => revealObs.observe(el))
 
     // ── Scroll handler ───────────────────────────────────
     const onScroll = () => {
@@ -33,7 +67,10 @@ export default function ScrollCinematic() {
       const total = document.documentElement.scrollHeight - window.innerHeight
 
       // Progress bar
-      if (bar) bar.style.width = `${(scrolled / total) * 100}%`
+      if (bar) bar.style.width = `${total > 0 ? (scrolled / total) * 100 : 0}%`
+
+      // Reveal fallback — works even when IntersectionObserver doesn't fire.
+      revealInView()
 
       // Parallax
       parallaxTargets().forEach((section) => {
@@ -48,11 +85,20 @@ export default function ScrollCinematic() {
     }
 
     window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', revealInView, { passive: true })
     onScroll()
+
+    // Safety net: ensure above-the-fold content reveals shortly after load
+    // even if IO never fires and the user hasn't scrolled yet.
+    const t1 = window.setTimeout(revealInView, 200)
+    const t2 = window.setTimeout(revealInView, 1200)
 
     return () => {
       window.removeEventListener('scroll', onScroll)
-      revealObs.disconnect()
+      window.removeEventListener('resize', revealInView)
+      window.clearTimeout(t1)
+      window.clearTimeout(t2)
+      revealObs?.disconnect()
     }
   }, [])
 

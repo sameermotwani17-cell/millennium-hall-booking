@@ -301,6 +301,8 @@ input:-webkit-autofill:active {
   .walker { animation: none; transform: translateX(34vw) scale(1); opacity: 1; }
   .walker-bob, .walk-frame.a, .walk-frame.b, .walk-shadow, .walk-portal { animation: none; }
   .walk-frame.b { opacity: 0; }
+  /* Never keep cinematic content hidden when motion is reduced — show it. */
+  [data-reveal] { opacity: 1; transform: none; transition: none; }
 }
 
 /* ─── AUTOFILL OVERRIDE ───────────────────────────────
