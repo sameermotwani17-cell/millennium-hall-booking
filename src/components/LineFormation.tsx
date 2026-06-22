@@ -83,7 +83,9 @@ export default function LineFormation() {
       {/* Pinned cinematic stage */}
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-black flex items-center justify-center">
 
-        {/* The formation video — scrubbed by scroll. Exact poster as fallback. */}
+        {/* The formation video — full-bleed 16:9, scrubbed by scroll.
+            object-cover fills the stage so there are no letterbox boundaries;
+            the dark surround + vignette melt the edges into the page. */}
         {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
         <video
           ref={videoRef}
@@ -92,41 +94,23 @@ export default function LineFormation() {
           muted
           playsInline
           preload="auto"
-          className="relative z-10 w-full h-full object-contain"
+          className="absolute inset-0 z-10 w-full h-full object-cover"
         />
 
-        {/* Title overlay — sits over the dark void at the start of the formation */}
-        <div className="pointer-events-none absolute top-[12%] left-0 right-0 z-30 text-center px-6">
-          <span className="block text-[#FCD116] text-[9px] tracking-[0.45em] uppercase font-medium mb-2 opacity-80">
-            Afroweek presents
-          </span>
-          <span className="block font-[family-name:var(--font-bebas)] text-[clamp(28px,5vw,56px)] tracking-[0.12em] text-white/85 leading-none">
-            THE LINE THEY DREW
-          </span>
-        </div>
+        {/* Seamless blend — fade the frame edges to pure black so the video
+            dissolves into the background with no visible boundary, while the
+            centered poster keeps full colour contrast. */}
+        <div className="pointer-events-none absolute inset-0 z-20 bg-[radial-gradient(ellipse_at_center,transparent_42%,rgba(0,0,0,0.5)_72%,#000_100%)]" />
 
-        {/* Atmospheric vignette + grain over the stage */}
-        <div className="pointer-events-none absolute inset-0 z-20 bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,0,0,0.85)_100%)]" />
+        {/* Subtle grain */}
         <div
-          className="pointer-events-none absolute inset-0 z-20 opacity-[0.12]"
+          className="pointer-events-none absolute inset-0 z-20 opacity-[0.1]"
           style={{
             backgroundImage:
               'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\' opacity=\'0.5\'/%3E%3C/svg%3E")',
             backgroundSize: '180px',
           }}
         />
-
-        {/* Pan-African hairlines top & bottom */}
-        <div className="absolute top-0 left-0 right-0 z-30 h-0.5 flex">
-          <div className="flex-1 bg-[#C8102E]" />
-          <div className="flex-1 bg-[#FCD116]" />
-          <div className="flex-1 bg-[#006B3F]" />
-        </div>
-        <div className="absolute bottom-0 left-0 right-0 z-30 h-0.5 flex">
-          <div className="flex-1 bg-[#006B3F]" />
-          <div className="flex-1 bg-[#FCD116]" />
-          <div className="flex-1 bg-[#C8102E]" />
-        </div>
 
         {/* Scroll hint — fades as you go */}
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-1.5 animate-pulse">
