@@ -29,12 +29,29 @@ export async function sendTicketEmail(booking: Booking, eventName: string): Prom
 async function _sendOnce(booking: Booking, eventName: string): Promise<void> {
   const resend = new Resend(process.env.RESEND_API_KEY!)
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-  const ticketUrl = `${appUrl}/ticket?ref=${booking.booking_ref}`
-  const seatList = booking.seat_ids.join(' · ')
+  const { subject, html } = renderTicketEmail(booking, eventName, appUrl)
 
   await resend.emails.send({
     from: process.env.RESEND_FROM_EMAIL || 'tickets@millenniumhall.com',
     to: booking.attendee_email,
+    subject,
+    html,
+  })
+}
+
+/**
+ * Builds the ticket email (subject + HTML). Single source of truth shared by
+ * the live Resend path and the one-off Gmail re-send script.
+ */
+export function renderTicketEmail(
+  booking: Booking,
+  eventName: string,
+  appUrl: string
+): { subject: string; html: string } {
+  const ticketUrl = `${appUrl}/ticket?ref=${booking.booking_ref}`
+  const seatList = booking.seat_ids.join(' · ')
+
+  return {
     subject: `🎟 Your AFRO WEEK 2026 Ticket — ${booking.booking_ref}`,
     html: `<!DOCTYPE html>
 <html lang="en">
@@ -174,6 +191,6 @@ async function _sendOnce(booking: Booking, eventName: string): Promise<void> {
 </table>
 </body>
 </html>`.trim(),
-  })
+  }
 }
 
