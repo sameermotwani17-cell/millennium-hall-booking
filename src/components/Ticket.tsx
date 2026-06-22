@@ -28,7 +28,7 @@ export default function Ticket({ booking }: Props) {
       <div className="bg-gradient-to-br from-[#2E1A08] to-[#1A0F04] px-7 py-6 flex justify-between items-start">
         <div>
           <div className="text-xl font-bold text-[#F0DFC0] tracking-wide">{eventName}</div>
-          <div className="text-xs text-[#C8A97A] mt-1 tracking-wider">Millennium Hall · Saturday 14 September 2026 · 7:30 PM</div>
+          <div className="text-xs text-[#C8A97A] mt-1 tracking-wider">Millennium Hall · APU · Friday 26 June 2026 · 7:30 PM</div>
         </div>
         <div className="text-right">
           <div className="text-[9px] tracking-[0.15em] uppercase text-[#8A7055] mb-1">Booking Ref</div>
@@ -49,7 +49,7 @@ export default function Ticket({ booking }: Props) {
             </div>
             <div>
               <div className="text-[9px] tracking-[0.18em] uppercase text-[#8A7055] mb-0.5">Date</div>
-              <div className="text-sm text-[#2E1A08]">14 Sep 2026</div>
+              <div className="text-sm text-[#2E1A08]">26 Jun 2026</div>
             </div>
             <div>
               <div className="text-[9px] tracking-[0.18em] uppercase text-[#8A7055] mb-0.5">Doors</div>

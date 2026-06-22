@@ -1,36 +1,41 @@
 import type { Metadata } from 'next'
-import { Cormorant_Garamond, DM_Sans } from 'next/font/google'
+import { Bebas_Neue, Inter } from 'next/font/google'
 import './globals.css'
+import ScrollCinematic from '@/components/ScrollCinematic'
+import SiteAudio from '@/components/SiteAudio'
 
-const cormorant = Cormorant_Garamond({
+const bebas = Bebas_Neue({
   subsets: ['latin'],
-  weight: ['300', '400', '600', '700'],
-  style: ['normal', 'italic'],
-  variable: '--font-cormorant',
+  weight: ['400'],
+  variable: '--font-bebas',
   display: 'swap',
 })
 
-const dmSans = DM_Sans({
+const inter = Inter({
   subsets: ['latin'],
-  weight: ['300', '400', '500'],
-  variable: '--font-dm',
+  weight: ['300', '400', '500', '600'],
+  variable: '--font-inter',
   display: 'swap',
 })
 
 export const metadata: Metadata = {
-  title: 'Millennium Hall — Reserve Your Seat',
-  description: 'An Evening at Millennium Hall. Reserve your seat for an unforgettable night.',
+  title: 'AFRO WEEK 2026 — Reserve Your Seat',
+  description: 'The biggest African cultural celebration of the year. Reserve your seat for an unforgettable night at Millennium Hall.',
   openGraph: {
-    title: 'Millennium Hall — Reserve Your Seat',
-    description: 'An Evening at Millennium Hall. Reserve your seat for an unforgettable night.',
+    title: 'AFRO WEEK 2026 — Reserve Your Seat',
+    description: 'The biggest African cultural celebration of the year.',
     type: 'website',
   },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${cormorant.variable} ${dmSans.variable}`}>
-      <body className="bg-[#1C1007] text-[#F0DFC0] antialiased">{children}</body>
+    <html lang="en" className={`${bebas.variable} ${inter.variable}`}>
+      <body className="bg-[#0A0A0A] text-[#F5F0E8] antialiased">
+        <ScrollCinematic />
+        <SiteAudio />
+        {children}
+      </body>
     </html>
   )
 }

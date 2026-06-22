@@ -17,30 +17,37 @@ export async function createBooking(params: {
 }): Promise<{ booking: Booking; error: string | null }> {
   const supabase = createServiceSupabase()
 
-  const { data: seats, error: seatsError } = await supabase
+  // Atomic claim: UPDATE only rows where status='available' and return claimed ids.
+  // If any seat was already taken by a concurrent request, the returned count will
+  // be less than requested and we abort — no double-booking possible.
+  const { data: claimed, error: claimError } = await supabase
     .from('seats')
-    .select('id, status')
+    .update({ status: 'reserved' })
     .in('id', params.seatIds)
     .eq('event_id', params.eventId)
+    .eq('status', 'available')   // only claim still-available seats
+    .select('id')
 
-  if (seatsError) return { booking: null as unknown as Booking, error: seatsError.message }
+  if (claimError) return { booking: null as unknown as Booking, error: claimError.message }
 
-  const unavailable = seats?.filter(s => s.status !== 'available') ?? []
-  if (unavailable.length > 0) {
-    return {
-      booking: null as unknown as Booking,
-      error: `Seats no longer available: ${unavailable.map(s => s.id).join(', ')}`
+  if (!claimed || claimed.length < params.seatIds.length) {
+    // Release any partially claimed seats
+    if (claimed && claimed.length > 0) {
+      await supabase
+        .from('seats')
+        .update({ status: 'available' })
+        .in('id', claimed.map(s => s.id))
     }
+    return { booking: null as unknown as Booking, error: 'Seat no longer available — someone just grabbed it. Please choose another.' }
   }
 
+  // Generate a unique booking ref
   let ref = generateRef()
-  let attempts = 0
-  while (attempts < 5) {
+  for (let attempts = 0; attempts < 5; attempts++) {
     const { data: existing } = await supabase
-      .from('bookings').select('id').eq('booking_ref', ref).single()
+      .from('bookings').select('id').eq('booking_ref', ref).maybeSingle()
     if (!existing) break
     ref = generateRef()
-    attempts++
   }
 
   const qrPayload: QRPayload = {
@@ -51,14 +58,6 @@ export async function createBooking(params: {
     valid: true,
     ts: Date.now(),
   }
-
-  const { error: updateError } = await supabase
-    .from('seats')
-    .update({ status: 'reserved' })
-    .in('id', params.seatIds)
-    .eq('event_id', params.eventId)
-
-  if (updateError) return { booking: null as unknown as Booking, error: updateError.message }
 
   const { data: booking, error: bookingError } = await supabase
     .from('bookings')
@@ -75,6 +74,7 @@ export async function createBooking(params: {
     .single()
 
   if (bookingError) {
+    // Roll back seat claim on booking insert failure
     await supabase.from('seats').update({ status: 'available' }).in('id', params.seatIds)
     return { booking: null as unknown as Booking, error: bookingError.message }
   }

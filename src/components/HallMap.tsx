@@ -1,196 +1,351 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { SECTION_CONFIG, ZONE_LABELS, MAX_SEATS_PER_BOOKING } from '@/lib/hall-config'
+import { useEffect, useState, useCallback, useRef, memo } from 'react'
+import { ROW_CONFIGS, ZONE_LABELS, MAX_SEATS_PER_BOOKING, getRowSeatEntries } from '@/lib/hall-config'
 import type { Seat } from '@/types'
 
 interface Props {
-  eventId: string
   onSelectionChange: (seats: Seat[]) => void
 }
 
-export default function HallMap({ eventId, onSelectionChange }: Props) {
-  const [seats, setSeats] = useState<Map<string, Seat>>(new Map())
-  const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [loading, setLoading] = useState(true)
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null)
-  const supabaseRef = createClient()
+const SeatBtn = memo(function SeatBtn({
+  seat, isSelected, onToggle,
+}: { seat: Seat; isSelected: boolean; onToggle: (id: string) => void }) {
+  const unavailable = seat.status === 'reserved' || seat.status === 'taken'
+  let cls = 'seat '
+  if (unavailable)     cls += 'seat-taken'
+  else if (isSelected) cls += 'seat-selected'
+  else if (seat.zone === 'premium') cls += 'seat-premium seat-available'
+  else                 cls += 'seat-available'
 
+  return (
+    <div
+      className={cls}
+      title={`Row ${seat.row_label} · Seat ${seat.col_num} · ${ZONE_LABELS[seat.zone] ?? seat.zone}`}
+      onClick={() => { if (!unavailable) onToggle(seat.id) }}
+    />
+  )
+})
+
+// Invisible placeholder keeps a row's outer block the same width as full rows
+function Phantom({ count }: { count: number }) {
+  return (
+    <>
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} className="w-[18px] h-[18px] flex-shrink-0" />
+      ))}
+    </>
+  )
+}
+
+const MAX_OUTER = 4  // seats 1-4 or 41-44 per side
+
+export default function HallMap({ onSelectionChange }: Props) {
+  const [seats, setSeats]       = useState<Map<string, Seat>>(new Map())
+  const [selected, setSelected] = useState<string | null>(null)
+  const [loading, setLoading]   = useState(true)
+  const onSelectionRef = useRef(onSelectionChange)
+  onSelectionRef.current = onSelectionChange
+  const seatsRef = useRef(seats)
+  seatsRef.current = seats
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  // ── Initial load ─────────────────────────────────────────────────────────────
   useEffect(() => {
-    const supabase = supabaseRef
-    const fetchSeats = async () => {
-      const { data } = await supabase
-        .from('seats')
-        .select('*')
-        .eq('event_id', eventId)
-      if (data) {
-        const map = new Map<string, Seat>()
-        data.forEach(s => map.set(s.id, s as Seat))
-        setSeats(map)
-      }
-      setLoading(false)
-    }
-    fetchSeats()
+    fetch('/api/seats?event=mh-2026-09-14')
+      .then(r => r.json())
+      .then(d => {
+        if (d.seats) {
+          const map = new Map<string, Seat>()
+          d.seats.forEach((s: Seat) => map.set(s.id, s))
+          setSeats(map)
+        }
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [])
 
-    const channel = supabase.channel('seats-realtime')
-      .on('postgres_changes', {
-        event: 'UPDATE', schema: 'public', table: 'seats',
-        filter: `event_id=eq.${eventId}`
-      }, payload => {
-        setSeats(prev => {
-          const next = new Map(prev)
-          next.set(payload.new.id, payload.new as Seat)
-          return next
+  // ── Center scroll horizontally on mobile after hall loads ─────────────────────
+  useEffect(() => {
+    if (loading) return
+    const el = scrollRef.current
+    if (!el) return
+    const excess = el.scrollWidth - el.clientWidth
+    if (excess > 0) el.scrollLeft = excess / 2
+  }, [loading])
+
+  // ── Supabase Realtime — live seat updates (StrictMode-safe) ──────────────────
+  useEffect(() => {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const channelRef: { current: any } = { current: null }
+    let active = true
+
+    async function subscribe() {
+      const { createBrowserClient } = await import('@supabase/ssr')
+      if (!active) return  // effect was cleaned up before async import finished
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      )
+      const ch = supabase
+        .channel('seats-live')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'seats' }, payload => {
+          const updated = payload.new as Seat
+          setSeats(prev => {
+            const next = new Map(prev)
+            const existing = next.get(updated.id)
+            if (existing) next.set(updated.id, { ...existing, status: updated.status })
+            return next
+          })
+          setSelected(prev => (prev === updated.id && updated.status !== 'available') ? null : prev)
         })
-      }).subscribe()
+        .subscribe()
+      if (active) channelRef.current = ch
+      else ch.unsubscribe()  // cleaned up while we were awaiting
+    }
 
-    return () => { supabase.removeChannel(channel) }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventId])
+    subscribe().catch(console.error)
+    return () => {
+      active = false
+      channelRef.current?.unsubscribe()
+      channelRef.current = null
+    }
+  }, [])
 
+  // ── Single-seat toggle: clicking a new seat replaces previous selection ───────
   const toggleSeat = useCallback((seatId: string) => {
-    const seat = seats.get(seatId)
+    const seat = seatsRef.current.get(seatId)
     if (!seat || seat.status !== 'available') return
-
     setSelected(prev => {
-      const next = new Set(prev)
-      if (next.has(seatId)) {
-        next.delete(seatId)
-      } else {
-        if (next.size >= MAX_SEATS_PER_BOOKING) return prev
-        next.add(seatId)
-      }
-      const selectedSeats = Array.from(next).map(id => seats.get(id)!).filter(Boolean)
-      onSelectionChange(selectedSeats)
+      const next = prev === seatId ? null : seatId
+      setTimeout(() => {
+        const s = next ? seatsRef.current.get(next) : undefined
+        onSelectionRef.current(s ? [s] : [])
+      }, 0)
       return next
     })
-  }, [seats, onSelectionChange])
-
-  const getSeatClass = (seat: Seat): string => {
-    const base = 'seat w-[13px] h-[13px] rounded-t-sm rounded-b flex-shrink-0 relative'
-    if (selected.has(seat.id)) return `${base} seat-selected`
-    if (seat.status === 'reserved' || seat.status === 'taken') return `${base} seat-taken`
-    if (seat.zone === 'premium') return `${base} seat seat-premium seat-available`
-    return `${base} seat seat-available`
-  }
-
-  function renderBlock(sectionId: string) {
-    const config = SECTION_CONFIG.find(s => s.id === sectionId)
-    if (!config) return null
-
-    return (
-      <div key={sectionId} className="flex flex-col gap-[2px] items-start">
-        {Array.from({ length: config.rows }, (_, ri) => {
-          const rowLabel = String.fromCharCode(65 + ri)
-          return (
-            <div key={rowLabel} className="flex items-center gap-[2px]">
-              <span className="text-[8px] text-[#C8A97A]/20 w-3 text-right flex-shrink-0 mr-1 font-mono">{rowLabel}</span>
-              {Array.from({ length: config.cols }, (_, ci) => {
-                const seatId = `${sectionId}${rowLabel}${String(ci + 1).padStart(2, '0')}`
-                const seat = seats.get(seatId)
-                if (!seat) {
-                  return <div key={seatId} className="w-[13px] h-[13px] rounded flex-shrink-0 bg-[#C8A97A]/5" />
-                }
-                return (
-                  <div
-                    key={seatId}
-                    className={getSeatClass(seat)}
-                    onClick={() => toggleSeat(seatId)}
-                    onMouseEnter={e => setTooltip({
-                      x: e.clientX, y: e.clientY,
-                      text: `${seatId} · ${ZONE_LABELS[seat.zone]} · Row ${rowLabel}, Seat ${ci + 1}`,
-                    })}
-                  />
-                )
-              })}
-            </div>
-          )
-        })}
-      </div>
-    )
-  }
-
-  function renderSection(label: string, children: React.ReactNode[]) {
-    return (
-      <div key={label} className="flex flex-col items-center gap-0.5 w-full">
-        <div className="flex items-center gap-2 w-full mb-0.5">
-          <div className="flex-1 h-px bg-[#C8A97A]/8" />
-          <span className="text-[8px] tracking-[0.18em] uppercase text-[#C8A97A]/20 whitespace-nowrap">{label}</span>
-          <div className="flex-1 h-px bg-[#C8A97A]/8" />
-        </div>
-        <div className="flex items-start justify-center gap-0">{children}</div>
-      </div>
-    )
-  }
+  }, [])
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[#C4622D] border-t-transparent rounded-full animate-spin" />
+      <div className="flex-1 flex flex-col items-center justify-center gap-3">
+        <div className="w-8 h-8 border-2 border-[#FCD116] border-t-transparent rounded-full animate-spin" />
+        <span className="text-[10px] tracking-[0.2em] text-[#FCD116]/40 uppercase font-mono animate-pulse">
+          Loading Hall Map…
+        </span>
       </div>
     )
   }
 
-  return (
-    <div className="flex-1 overflow-auto border border-[#C8A97A]/10 rounded-lg bg-[#0E0904] relative"
-      onMouseLeave={() => setTooltip(null)}>
-      {tooltip && (
-        <div className="fixed z-50 bg-[#1A0F04] border border-[#C8A97A]/20 rounded px-2 py-1 text-xs text-[#F0DFC0] pointer-events-none whitespace-nowrap"
-          style={{ left: tooltip.x + 12, top: tooltip.y - 32 }}>
-          {tooltip.text}
+  // ── Row renderer — 5-block layout matching the physical seating chart ─────────
+  //
+  //  [phantom][outerLeft 1-4][wing aisle][innerLeft 5-16][rowLabel]
+  //  [center aisle][center 17-28][center aisle]
+  //  [rowLabel][innerRight 29-40][wing aisle][outerRight 41-44][phantom]
+  //
+  // Phantom cells fill in where outer wing seats don't exist so every row is the
+  // same total width — this creates the stepped fan shape from the photo.
+
+  function renderSeat(id: string) {
+    const seat = seats.get(id)
+    if (!seat) return <div key={id} className="seat seat-taken opacity-20" />
+    return <SeatBtn key={id} seat={seat} isSelected={selected === id} onToggle={toggleSeat} />
+  }
+
+  function renderRow(rowCfg: typeof ROW_CONFIGS[0]) {
+    const entries         = getRowSeatEntries(rowCfg)
+    const outerLeftSeats  = entries.filter(e => e.section === 'OL')
+    const innerLeftSeats  = entries.filter(e => e.section === 'L')
+    const centerSeats     = entries.filter(e => e.section === 'C')
+    const innerRightSeats = entries.filter(e => e.section === 'R')
+    const outerRightSeats = entries.filter(e => e.section === 'OR')
+
+    const outerLeftPad  = MAX_OUTER - outerLeftSeats.length
+    const outerRightPad = MAX_OUTER - outerRightSeats.length
+
+    const rowColor = rowCfg.isBalcony ? 'text-[#9B8EC4]/50' : 'text-[#FCD116]/30'
+
+    return (
+      <div key={rowCfg.row} className="flex items-center justify-center">
+
+        {/* ── Outer-left wing: phantom spacers + real seats (staggered) ── */}
+        <div className="flex gap-[3px]">
+          <Phantom count={outerLeftPad} />
+          {outerLeftSeats.map(({ id }) => renderSeat(id))}
         </div>
-      )}
 
-      <div style={{ perspective: '900px', padding: '1rem 1rem 2.5rem' }}>
-        <div style={{ transform: 'rotateX(22deg)', transformOrigin: '50% 0%', transformStyle: 'preserve-3d' }}>
-          {/* Stage */}
-          <div className="text-center mb-2">
-            <div className="inline-block w-[55%] bg-gradient-to-b from-[rgba(100,65,25,0.9)] to-[rgba(60,35,10,0.7)] border border-[#C8A97A]/25 rounded-t py-2.5 text-[10px] tracking-[0.25em] uppercase text-[#C8A97A]/70"
-              style={{ boxShadow: '0 6px 24px rgba(0,0,0,0.5)' }}>
-              ▲  S T A G E  ▲
+        {/* Wing aisle — always present to keep columns aligned */}
+        <div className="w-[5px] flex-shrink-0" />
+
+        {/* ── Inner-left block (seats 5-16) ── */}
+        <div className="flex gap-[3px]">
+          {innerLeftSeats.map(({ id }) => renderSeat(id))}
+        </div>
+
+        {/* Row label left */}
+        <span className={`text-[7px] font-mono select-none w-[18px] text-center flex-shrink-0 ${rowColor}`}>
+          {rowCfg.row}
+        </span>
+
+        {/* ── Center aisle ── */}
+        <div className="w-2 flex-shrink-0" />
+
+        {/* ── Center block (seats 17-28) ── */}
+        <div className="flex gap-[3px]">
+          {centerSeats.map(({ id }) => renderSeat(id))}
+          {rowCfg.isWheelchair && (
+            <span
+              className="flex items-center justify-center w-[18px] h-[18px] text-[10px] flex-shrink-0"
+              title="Wheelchair Accessible"
+            >
+              ♿
+            </span>
+          )}
+        </div>
+
+        {/* ── Center aisle ── */}
+        <div className="w-2 flex-shrink-0" />
+
+        {/* Row label right */}
+        <span className={`text-[7px] font-mono select-none w-[18px] text-center flex-shrink-0 ${rowColor}`}>
+          {rowCfg.row}
+        </span>
+
+        {/* ── Inner-right block (seats 29-40) ── */}
+        <div className="flex gap-[3px]">
+          {innerRightSeats.map(({ id }) => renderSeat(id))}
+        </div>
+
+        {/* Wing aisle */}
+        <div className="w-[5px] flex-shrink-0" />
+
+        {/* ── Outer-right wing: real seats + phantom spacers (staggered) ── */}
+        <div className="flex gap-[3px]">
+          {outerRightSeats.map(({ id }) => renderSeat(id))}
+          <Phantom count={outerRightPad} />
+        </div>
+
+      </div>
+    )
+  }
+
+  const mainFloor = ROW_CONFIGS.filter(r => !r.isBalcony)
+  const balcony   = ROW_CONFIGS.filter(r =>  r.isBalcony)
+
+  return (
+    <div
+      ref={scrollRef}
+      className="flex-1 overflow-auto rounded-lg bg-[#090909] hall-grid relative border border-[#FCD116]/10"
+      style={{ boxShadow: 'inset 0 0 80px rgba(252,209,22,0.04)', touchAction: 'pan-x pan-y' }}
+    >
+      <div className="scan-line" />
+
+      {/* Corner accents */}
+      {['top-2 left-2 border-t border-l','top-2 right-2 border-t border-r','bottom-2 left-2 border-b border-l','bottom-2 right-2 border-b border-r'].map((cls, i) => (
+        <div key={i} className={`absolute w-4 h-4 border-[#FCD116]/20 ${cls}`} />
+      ))}
+
+      {/* 3-D perspective wrapper */}
+      <div
+        style={{
+          perspective: '900px',
+          perspectiveOrigin: '50% -10%',
+          padding: '1.5rem 0.75rem 2rem',
+          minWidth: 1020,
+        }}
+      >
+        <div
+          style={{
+            transform: 'rotateX(16deg) scale(0.97)',
+            transformOrigin: '50% 0',
+            transformStyle: 'preserve-3d',
+          }}
+        >
+          {/* STAGE */}
+          <div className="text-center mb-4">
+            <div
+              className="inline-block w-[52%] py-3 rounded-t text-[10px] tracking-[0.35em] uppercase font-mono select-none"
+              style={{
+                background: 'linear-gradient(135deg,rgba(200,16,46,0.55),rgba(252,209,22,0.3),rgba(0,107,63,0.55))',
+                border: '1px solid rgba(252,209,22,0.22)',
+                color: 'rgba(252,209,22,0.85)',
+                boxShadow: '0 0 40px rgba(252,209,22,0.14), 0 8px 32px rgba(0,0,0,0.7)',
+                textShadow: '0 0 14px rgba(252,209,22,0.5)',
+              }}
+            >
+              ▲ &nbsp; S T A G E &nbsp; ▲
             </div>
-            <div className="h-3 w-[65%] mx-auto bg-gradient-to-b from-[rgba(60,35,10,0.5)] to-transparent rounded-b-[50%]" />
+            <div
+              className="h-4 w-[58%] mx-auto rounded-b-[60%]"
+              style={{ background: 'linear-gradient(to bottom, rgba(252,209,22,0.07), transparent)' }}
+            />
           </div>
 
-          {/* Hall body */}
-          <div className="flex flex-col items-center gap-2" style={{ minWidth: 680 }}>
-            {renderSection('Ground Floor — Stalls', [
-              renderBlock('L'),
-              <div key="a1" className="w-5 flex-shrink-0" />,
-              renderBlock('C'),
-              <div key="a2" className="w-5 flex-shrink-0" />,
-              renderBlock('R'),
-            ])}
-
-            {renderSection('Front Corner Blocks', [
-              renderBlock('FL'),
-              <div key="cs" className="w-[160px] flex-shrink-0" />,
-              renderBlock('FR'),
-            ])}
-
-            <div className="flex items-center gap-3 w-full my-2">
-              <div className="flex-1 h-px bg-[#C8A97A]/12" />
-              <div className="text-[9px] tracking-[0.2em] uppercase text-[#C8A97A]/25 whitespace-nowrap">BALCONY</div>
-              <div className="flex-1 h-px bg-[#C8A97A]/12" />
-            </div>
-
-            {renderSection('Balcony', [
-              renderBlock('BL'),
-              <div key="ba1" className="w-5 flex-shrink-0" />,
-              renderBlock('BC'),
-              <div key="ba2" className="w-5 flex-shrink-0" />,
-              renderBlock('BR'),
-            ])}
-
-            {renderSection('Rear Balcony', [
-              renderBlock('RL'),
-              <div key="ra" className="w-5 flex-shrink-0" />,
-              renderBlock('RR'),
-            ])}
+          {/* MAIN FLOOR (A-J) */}
+          <div className="flex flex-col gap-[4px] items-center mb-1">
+            {mainFloor.map(row => renderRow(row))}
           </div>
+
+          {/* BALCONY DIVIDER */}
+          <div className="flex items-center gap-3 my-3 px-4">
+            <div className="flex-1 h-px bg-[#9B8EC4]/20" />
+            <span className="text-[7px] tracking-[0.3em] uppercase text-[#9B8EC4]/40 font-mono select-none whitespace-nowrap">
+              ── BALCONY ──
+            </span>
+            <div className="flex-1 h-px bg-[#9B8EC4]/20" />
+          </div>
+
+          {/* BALCONY (K-R) */}
+          <div
+            className="flex flex-col gap-[4px] items-center px-2 py-3 rounded"
+            style={{
+              background: 'rgba(155,142,196,0.04)',
+              border: '1px solid rgba(155,142,196,0.1)',
+              boxShadow: 'inset 0 4px 20px rgba(0,0,0,0.4)',
+            }}
+          >
+            {balcony.map(row => renderRow(row))}
+          </div>
+
+          {/* ENTRANCE */}
+          <div className="flex flex-col items-center gap-2 mt-4">
+            <div className="flex gap-8 items-center justify-center">
+              <div
+                className="w-16 h-7 rounded-sm"
+                style={{ border: '1px solid rgba(138,112,85,0.2)', background: 'rgba(138,112,85,0.06)' }}
+              />
+              <div
+                className="px-4 py-1.5 rounded-sm text-[8px] tracking-[0.2em] text-[#8A7055]/70 font-mono select-none"
+                style={{ border: '1px solid rgba(138,112,85,0.25)', background: 'rgba(138,112,85,0.07)' }}
+              >
+                Family Room
+              </div>
+              <div
+                className="w-16 h-7 rounded-sm"
+                style={{ border: '1px solid rgba(138,112,85,0.2)', background: 'rgba(138,112,85,0.06)' }}
+              />
+            </div>
+            <div className="flex gap-8 items-center justify-center">
+              {['▲','▲','▲','▲'].map((t, i) => (
+                <span key={i} className="text-[#FCD116]/20 text-xs">{t}</span>
+              ))}
+            </div>
+            <span className="text-[7px] tracking-[0.25em] text-[#FCD116]/20 font-mono uppercase select-none">
+              You Are Here · Entrance
+            </span>
+          </div>
+
+          {/* Hint text */}
+          <p className="text-center text-[9px] tracking-[0.2em] text-white/20 font-mono mt-4 select-none uppercase">
+            {MAX_SEATS_PER_BOOKING === 1
+              ? 'Click a seat to select · Click again to deselect'
+              : `Select up to ${MAX_SEATS_PER_BOOKING} seats`}
+          </p>
         </div>
       </div>
+
+      <div className="absolute bottom-0 left-1/4 right-1/4 h-px bg-gradient-to-r from-transparent via-[#FCD116]/15 to-transparent" />
     </div>
   )
 }

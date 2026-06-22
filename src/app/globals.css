@@ -3,54 +3,146 @@
 @tailwind utilities;
 
 :root {
-  --ink:        #1C1007;
-  --brown:      #5C3D1E;
-  --brown2:     #7A4F28;
-  --tan:        #C8A97A;
-  --tan-lt:     #F0DFC0;
-  --cream:      #FAF5EC;
-  --cream2:     #F0E8D5;
-  --green:      #2E4A2E;
-  --green2:     #4A7A4A;
-  --orange:     #C4622D;
-  --gold:       #C9930A;
-  --gold2:      #F0B824;
-  --muted:      #8A7055;
+  --ink:        #0A0A0A;
+  --deep:       #0D0D0D;
+  --red:        #C8102E;
+  --red2:       #E8192E;
+  --green:      #006B3F;
+  --green2:     #00A65A;
+  --gold:       #FCD116;
+  --gold2:      #FFE14D;
+  --white:      #F5F0E8;
+  --muted:      #8A8070;
+  --panel:      #111111;
+  --border:     rgba(252,209,22,0.15);
+
+  /* seat tech colors */
+  --seat-avail:    #00C896;
+  --seat-premium:  #FCD116;
+  --seat-taken:    #3A1A1A;
+  --seat-selected: #FF4D4D;
 }
 
 * { box-sizing: border-box; }
 
 body {
-  font-family: 'DM Sans', system-ui, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   background: var(--ink);
-  color: var(--tan-lt);
+  color: var(--white);
 }
 
-.seat { @apply relative cursor-pointer transition-all duration-150 select-none; }
-.seat::after {
-  content: '';
+/* ─── SEAT MAP 3D ─────────────────────────────────────── */
+.seat {
+  @apply relative cursor-pointer select-none;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  touch-action: manipulation;
+}
+.seat::after { content: none; }
+
+.seat-available {
+  background: var(--seat-avail);
+  box-shadow: 0 2px 4px rgba(0,200,150,0.25), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+.seat-available:hover {
+  /* NO translateY — seats jumping away from the cursor caused infinite flicker */
+  transform: scale(1.25);
+  box-shadow: 0 0 12px rgba(0,200,150,0.7), 0 0 4px rgba(0,200,150,0.4);
+}
+
+.seat-premium {
+  background: var(--seat-premium);
+  box-shadow: 0 2px 6px rgba(252,209,22,0.35);
+}
+.seat-premium.seat-available:hover {
+  transform: scale(1.25);
+  box-shadow: 0 0 14px rgba(252,209,22,0.75), 0 0 4px rgba(252,209,22,0.4);
+}
+
+.seat-taken {
+  background: var(--seat-taken);
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.seat-selected {
+  background: var(--seat-selected) !important;
+  /* No translateY — just a ring + scale so cursor stays over the seat */
+  transform: scale(1.3);
+  box-shadow: 0 0 0 2.5px rgba(255,77,77,0.6), 0 0 16px rgba(255,77,77,0.55);
+}
+
+/* ─── GRID OVERLAY (tech blueprint feel) ─────────────── */
+.hall-grid {
+  background-image:
+    linear-gradient(rgba(252,209,22,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(252,209,22,0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* ─── SCAN LINE ANIMATION ─────────────────────────────── */
+@keyframes scanLine {
+  0%   { top: 0%; opacity: 0.6; }
+  100% { top: 100%; opacity: 0; }
+}
+.scan-line {
   position: absolute;
-  bottom: -2px; left: 0; right: 0; height: 2px;
-  border-radius: 0 0 2px 2px;
-  transition: background 0.15s;
+  left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(252,209,22,0.4), transparent);
+  animation: scanLine 4s linear infinite;
+  pointer-events: none;
 }
-.seat-available        { @apply bg-green-600 hover:-translate-y-1 hover:scale-110; }
-.seat-available::after { background: #1A3A1A; }
-.seat-taken            { @apply bg-orange-700 opacity-70 cursor-not-allowed; }
-.seat-taken::after     { background: #6E2010; }
-.seat-selected         { @apply -translate-y-1 scale-110; background: var(--gold); box-shadow: 0 0 8px rgba(201,147,10,0.6); }
-.seat-selected::after  { background: #7A5500; }
-.seat-premium          { background: #A07A20; }
-.seat-premium.seat-available:hover { background: #C9930A; }
 
+/* ─── ANIMATIONS ──────────────────────────────────────── */
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(12px); }
+  from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.fade-up { animation: fadeUp 0.4s ease both; }
+.fade-up { animation: fadeUp 0.5s ease both; }
 
-@keyframes pulse-ring {
-  0%   { transform: scale(1); opacity: 0.4; }
-  100% { transform: scale(1.5); opacity: 0; }
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.25; }
+  50%       { opacity: 0.55; }
 }
-.pulse-ring { animation: pulse-ring 1.5s ease-out infinite; }
+.glow-pulse { animation: glow-pulse 3s ease-in-out infinite; }
+
+@keyframes flicker {
+  0%, 95%, 100% { opacity: 1; }
+  96% { opacity: 0.7; }
+  97% { opacity: 1; }
+  98% { opacity: 0.5; }
+}
+.flicker { animation: flicker 8s ease-in-out infinite; }
+
+/* ─── SCROLL-CINEMATIC REVEALS ────────────────────────── */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(44px) scale(0.97);
+  transition:
+    opacity 0.95s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.95s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+[data-reveal].revealed {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+[data-reveal][data-reveal-delay="1"] { transition-delay: 0.12s; }
+[data-reveal][data-reveal-delay="2"] { transition-delay: 0.26s; }
+[data-reveal][data-reveal-delay="3"] { transition-delay: 0.42s; }
+[data-reveal][data-reveal-delay="4"] { transition-delay: 0.58s; }
+
+/* ─── PARALLAX VIDEO CONTAINERS ──────────────────────── */
+[data-parallax] { overflow: hidden; }
+[data-parallax] video {
+  will-change: transform;
+  height: 110%;
+  top: -5%;
+  left: 0;
+  right: 0;
+  width: 100%;
+  object-fit: cover;
+  position: absolute;
+}
