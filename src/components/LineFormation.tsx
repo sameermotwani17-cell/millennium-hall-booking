@@ -88,12 +88,22 @@ export default function LineFormation() {
         <video
           ref={videoRef}
           src="/the-line-forming.mp4"
-          poster="/the-line-poster.png"
+          poster="/the-line-poster-16x9.png"
           muted
           playsInline
           preload="auto"
-          className="relative z-10 h-full w-auto max-w-full object-contain"
+          className="relative z-10 w-full h-full object-contain"
         />
+
+        {/* Title overlay — sits over the dark void at the start of the formation */}
+        <div className="pointer-events-none absolute top-[12%] left-0 right-0 z-30 text-center px-6">
+          <span className="block text-[#FCD116] text-[9px] tracking-[0.45em] uppercase font-medium mb-2 opacity-80">
+            Afroweek presents
+          </span>
+          <span className="block font-[family-name:var(--font-bebas)] text-[clamp(28px,5vw,56px)] tracking-[0.12em] text-white/85 leading-none">
+            THE LINE THEY DREW
+          </span>
+        </div>
 
         {/* Atmospheric vignette + grain over the stage */}
         <div className="pointer-events-none absolute inset-0 z-20 bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(0,0,0,0.85)_100%)]" />

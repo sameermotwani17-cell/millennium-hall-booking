@@ -202,6 +202,97 @@ input:-webkit-autofill:active {
   position: absolute;
 }
 
+/* ─── THE WALK — game-style sprite walking into a portal ───────────────── */
+.walk-portal {
+  position: absolute;
+  right: 10%;
+  bottom: 20%;
+  width: clamp(90px, 11vw, 170px);
+  aspect-ratio: 3 / 5;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center,
+    rgba(255,236,180,0.95) 0%,
+    rgba(255,190,90,0.75) 32%,
+    rgba(255,120,40,0.35) 58%,
+    rgba(200,40,20,0) 75%);
+  filter: blur(1px);
+  animation: walk-portal-pulse 2.6s ease-in-out infinite;
+  pointer-events: none;
+}
+.walk-portal::after {
+  content: '';
+  position: absolute;
+  inset: 14%;
+  border-radius: 50%;
+  border: 2px solid rgba(255,220,140,0.5);
+  box-shadow: 0 0 30px rgba(255,180,80,0.6), inset 0 0 24px rgba(255,160,60,0.5);
+}
+@keyframes walk-portal-pulse {
+  0%, 100% { transform: scale(1);    opacity: 0.85; }
+  50%      { transform: scale(1.07); opacity: 1; }
+}
+
+/* Walker: outer handles locomotion across the screen + vanish into portal.
+   Sized by WIDTH so the image keeps its intrinsic ratio reliably. */
+.walker {
+  position: absolute;
+  bottom: 15%;
+  left: 0;
+  width: clamp(120px, 15vw, 240px);
+  will-change: transform, opacity;
+  animation: walk-across 17s linear infinite;
+}
+@keyframes walk-across {
+  0%   { transform: translateX(-14vw) scale(0.72); opacity: 0; }
+  7%   { opacity: 1; }
+  80%  { transform: translateX(72vw)  scale(1.0);  opacity: 1; }
+  90%  { transform: translateX(82vw)  scale(0.82); opacity: 0; }   /* steps into portal */
+  100% { transform: translateX(82vw)  scale(0.6);  opacity: 0; }
+}
+/* Inner handles the vertical walk bob */
+.walker-bob {
+  position: relative;
+  width: 100%;
+  animation: walk-bob 0.52s ease-in-out infinite alternate;
+}
+@keyframes walk-bob {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-4%); }
+}
+/* Two stride frames cross-fade with hard steps → leg movement.
+   Frame A is in flow (defines the box); frame B overlays it exactly. */
+.walk-frame {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 8px 10px rgba(0,0,0,0.45));
+}
+.walk-frame.a { position: relative; animation: walk-swap-a 0.52s steps(1) infinite; }
+.walk-frame.b { position: absolute; inset: 0; animation: walk-swap-b 0.52s steps(1) infinite; }
+@keyframes walk-swap-a { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes walk-swap-b { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
+/* Contact shadow on the ground, under the feet */
+.walk-shadow {
+  position: absolute;
+  bottom: 1%;
+  left: 50%;
+  width: 60%;
+  height: 6%;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0.5), rgba(0,0,0,0) 70%);
+  animation: walk-shadow 0.52s ease-in-out infinite alternate;
+  z-index: -1;
+}
+@keyframes walk-shadow {
+  from { opacity: 0.5;  width: 56%; }
+  to   { opacity: 0.34; width: 50%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .walker { animation: none; transform: translateX(34vw) scale(1); opacity: 1; }
+  .walker-bob, .walk-frame.a, .walk-frame.b, .walk-shadow, .walk-portal { animation: none; }
+  .walk-frame.b { opacity: 0; }
+}
+
 /* ─── AUTOFILL OVERRIDE ───────────────────────────────
    Prevents browsers from flashing a white/blue autofill
    background that makes white text invisible.           */
