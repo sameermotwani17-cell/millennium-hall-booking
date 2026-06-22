@@ -57,10 +57,17 @@ async function main() {
     .order('created_at', { ascending: true })
   if (error) { console.error('Supabase error:', error.message); process.exit(1) }
 
+  // Optional: limit to a single booking ref (e.g. ONLY_REF=MH-WCS896).
+  const onlyRef = (process.env.ONLY_REF || '').toUpperCase().trim()
+  const list = onlyRef
+    ? bookings!.filter(b => b.booking_ref.toUpperCase() === onlyRef)
+    : bookings!
+  if (onlyRef && !list.length) { console.error(`No confirmed booking with ref ${onlyRef}`); process.exit(1) }
+
   const { data: events } = await sb.from('events').select('id,name')
   const eventName = (id: string) => events?.find(e => e.id === id)?.name ?? 'Afro Week 2026'
 
-  console.log(`\n${SEND ? '🚀 SENDING via Gmail SMTP' : '🧪 DRY RUN'} — ${bookings!.length} confirmed bookings`)
+  console.log(`\n${SEND ? '🚀 SENDING via Gmail SMTP' : '🧪 DRY RUN'} — ${list.length} booking(s)${onlyRef ? ` (filtered to ${onlyRef})` : ' confirmed'}`)
   console.log(`   from: ${GMAIL_USER}   ticket links: ${APP_URL}\n`)
 
   let transporter: nodemailer.Transporter | null = null
@@ -76,7 +83,7 @@ async function main() {
   const ok: string[] = []
   const failed: { ref: string; email: string; err: string }[] = []
 
-  for (const b of bookings!) {
+  for (const b of list) {
     if (!SEND) { console.log(`  would email ${b.booking_ref}  ${b.attendee_email}`); continue }
     try {
       const { subject, html } = renderTicketEmail(b, eventName(b.event_id), APP_URL)
