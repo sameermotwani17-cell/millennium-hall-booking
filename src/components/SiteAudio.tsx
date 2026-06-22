@@ -98,13 +98,17 @@ export default function SiteAudio() {
         <button
           onClick={toggle}
           aria-label={playing ? 'Mute music' : 'Play music'}
-          className="fixed right-4 bottom-24 md:bottom-5 z-[9998] flex items-center gap-2 px-3 py-2 rounded-full text-[11px] font-mono tracking-wider transition-all select-none"
+          className="fixed right-4 bottom-24 md:bottom-5 z-[9998] flex items-center gap-2 px-4 py-2.5 rounded-full text-[11px] font-mono tracking-wider transition-all select-none"
           style={{
-            background: 'rgba(10,10,10,0.85)',
-            border: '1px solid rgba(252,209,22,0.25)',
-            color: playing ? 'rgba(252,209,22,0.9)' : 'rgba(255,255,255,0.35)',
+            background: playing ? 'rgba(10,10,10,0.92)' : 'rgba(252,209,22,0.95)',
+            border: playing ? '1px solid rgba(252,209,22,0.4)' : 'none',
+            color: playing ? 'rgba(252,209,22,0.9)' : '#000',
             backdropFilter: 'blur(8px)',
-            boxShadow: playing ? '0 0 18px rgba(252,209,22,0.15)' : 'none',
+            boxShadow: playing
+              ? '0 0 18px rgba(252,209,22,0.2)'
+              : '0 0 24px rgba(252,209,22,0.6), 0 4px 12px rgba(0,0,0,0.4)',
+            fontWeight: 700,
+            animation: !playing ? 'pulse 2s ease-in-out infinite' : 'none',
           }}
         >
           {playing ? (
@@ -118,8 +122,8 @@ export default function SiteAudio() {
             </>
           ) : (
             <>
-              <span>Play</span>
-              <span>UNAVAILABLE</span>
+              <span>▶</span>
+              <span>Play Music</span>
             </>
           )}
         </button>

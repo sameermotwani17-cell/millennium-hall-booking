@@ -12,14 +12,7 @@ const BookSchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
-  // 5 booking attempts per IP per hour — prevents seat-hoarding spam
-  const rl = rateLimit(`book:${clientIp(req)}`, 5, 60 * 60 * 1000)
-  if (!rl.ok) {
-    return NextResponse.json(
-      { error: 'Too many booking attempts. Please try again later.' },
-      { status: 429, headers: { 'Retry-After': String(rl.retryAfter) } },
-    )
-  }
+
 
   try {
     const body = await req.json()
