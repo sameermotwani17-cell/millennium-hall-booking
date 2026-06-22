@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { isDemoMode, createDemoBooking, DEMO_EVENT } from '@/lib/demo-store'
 import { sendTicketEmail } from '@/lib/email'
-import { rateLimit, clientIp } from '@/lib/rate-limit'
 
 const BookSchema = z.object({
   eventSlug: z.string().default('mh-2026-09-14'),
