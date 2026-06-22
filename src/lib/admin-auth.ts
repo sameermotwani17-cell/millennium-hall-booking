@@ -1,5 +1,5 @@
 /** Default usher/admin PIN when USHER_PIN env is not set. */
-export const DEFAULT_USHER_PIN = '0000'
+export const DEFAULT_USHER_PIN = '12345'
 
 export function getAdminPin(): string {
   return process.env.USHER_PIN ?? DEFAULT_USHER_PIN

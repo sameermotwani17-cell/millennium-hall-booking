@@ -89,7 +89,7 @@ export default function AdminPage() {
         body: JSON.stringify({ pin }),
       })
       if (res.ok) setPinVerified(true)
-      else setPinError('Incorrect PIN — try 0000')
+      else setPinError('Incorrect PIN')
     } catch {
       setPinError('Network error — try again')
     } finally {
@@ -212,7 +212,7 @@ export default function AdminPage() {
                 type="password" value={pin} onChange={e => { setPin(e.target.value); setPinError('') }}
                 onKeyDown={e => e.key === 'Enter' && verifyPin()}
                 className="input-dark rounded"
-                placeholder="0000"
+                placeholder="•••••"
                 maxLength={8}
               />
             </div>
