@@ -12,7 +12,7 @@ export const DEMO_EVENT: Event = {
   name: 'An Evening at Millennium',
   subtitle: 'Music, culture, and elegance in a single unforgettable night.',
   date: '2026-06-26',
-  doors_open: '19:00',
+  doors_open: '17:30',
   venue: 'Millennium Hall',
   address: 'APU',
   is_active: true,

@@ -78,7 +78,7 @@ async function _sendOnce(booking: Booking, eventName: string): Promise<void> {
     <td style="background:#0D0D0D;padding:28px 40px 0;border-left:1px solid rgba(252,209,22,0.12);border-right:1px solid rgba(252,209,22,0.12);">
       <div style="font-size:22px;color:#FFFFFF;font-weight:300;margin-bottom:4px;">${eventName}</div>
       <div style="font-size:13px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:28px;">
-        Friday, 26 June 2026 &nbsp;·&nbsp; 7:30 PM &nbsp;·&nbsp; Millennium Hall · APU
+        Friday, 26 June 2026 &nbsp;·&nbsp; 6:00 PM &nbsp;·&nbsp; Millennium Hall · APU
       </div>
 
       <!-- Info grid -->
@@ -132,12 +132,12 @@ async function _sendOnce(booking: Booking, eventName: string): Promise<void> {
           <td width="33%" style="padding:0 8px;text-align:center;vertical-align:top;">
             <div style="font-size:20px;margin-bottom:6px;">🚪</div>
             <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#FCD116;margin-bottom:3px;">Doors Open</div>
-            <div style="font-size:11px;color:rgba(255,255,255,0.45);line-height:1.5;">7:00 PM — arrive early</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.45);line-height:1.5;">5:30 PM — arrive early</div>
           </td>
           <td width="33%" style="padding:0 0 0 8px;text-align:center;vertical-align:top;">
             <div style="font-size:20px;margin-bottom:6px;">⏰</div>
-            <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#FCD116;margin-bottom:3px;">No Late Entry</div>
-            <div style="font-size:11px;color:rgba(255,255,255,0.45);line-height:1.5;">Doors close at 7:30 PM sharp</div>
+            <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#FCD116;margin-bottom:3px;">Show Starts</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.45);line-height:1.5;">6:00 PM sharp — be seated</div>
           </td>
         </tr>
       </table>
