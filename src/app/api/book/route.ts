@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { isDemoMode, createDemoBooking, DEMO_EVENT } from '@/lib/demo-store'
 import { sendTicketEmail } from '@/lib/email'
+import { rateLimit, clientIp } from '@/lib/rate-limit'
 
 const BookSchema = z.object({
   eventSlug: z.string().default('mh-2026-09-14'),
@@ -11,6 +12,15 @@ const BookSchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
+  // 5 booking attempts per IP per hour — prevents seat-hoarding spam
+  const rl = rateLimit(`book:${clientIp(req)}`, 5, 60 * 60 * 1000)
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'Too many booking attempts. Please try again later.' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfter) } },
+    )
+  }
+
   try {
     const body = await req.json()
     const { eventSlug, name, email, seatIds } = BookSchema.parse(body)
@@ -18,7 +28,9 @@ export async function POST(req: NextRequest) {
     if (isDemoMode()) {
       const { booking, error } = createDemoBooking({ name, email, seatIds })
       if (error) return NextResponse.json({ error }, { status: 409 })
-      sendTicketEmail(booking, DEMO_EVENT.name).catch(console.error)
+      sendTicketEmail(booking, DEMO_EVENT.name).catch(err =>
+        console.error(`[email] failed for demo booking ${booking.booking_ref}:`, err),
+      )
       return NextResponse.json({ booking }, { status: 201 })
     }
 
@@ -35,7 +47,9 @@ export async function POST(req: NextRequest) {
     })
     if (error) return NextResponse.json({ error }, { status: 409 })
 
-    sendTicketEmail(booking, event.name).catch(console.error)
+    sendTicketEmail(booking, event.name).catch(err =>
+      console.error(`[email] failed for ${booking.booking_ref}:`, err),
+    )
     return NextResponse.json({ booking }, { status: 201 })
   } catch (err: unknown) {
     console.error('Book error:', err)

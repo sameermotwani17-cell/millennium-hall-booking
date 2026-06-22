@@ -8,6 +8,8 @@ type ScanResult =
   | { valid: true; booking_ref: string; attendee_name: string; seats: string[]; status: string }
   | { valid: false; error: string }
 
+type ResendState = 'idle' | 'loading' | 'sent' | 'error'
+
 type BookingRow = {
   id: string
   booking_ref: string
@@ -40,7 +42,8 @@ export default function AdminPage() {
   const [cameraActive, setCameraActive] = useState(false)
   const [cameraError, setCameraError]   = useState<string | null>(null)
   const [scanStatus, setScanStatus] = useState<'idle' | 'scanning' | 'found'>('idle')
-  const [stats, setStats]           = useState<{ total: number; scanned: number; confirmed: number } | null>(null)
+  const [stats, setStats]           = useState<{ total: number; scanned: number; confirmed: number; isDemo?: boolean } | null>(null)
+  const [resendStates, setResendStates] = useState<Record<string, ResendState>>({})
 
   // Guest list
   const [bookings, setBookings]           = useState<BookingRow[]>([])
@@ -186,6 +189,24 @@ export default function AdminPage() {
 
   useEffect(() => () => stopCamera(), [stopCamera])
 
+  // ── Resend email ──────────────────────────────────────────────────────────
+  const resendEmail = useCallback(async (ref: string) => {
+    setResendStates(s => ({ ...s, [ref]: 'loading' }))
+    try {
+      const res = await fetch('/api/admin/resend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-pin': pin },
+        body: JSON.stringify({ bookingRef: ref }),
+      })
+      setResendStates(s => ({ ...s, [ref]: res.ok ? 'sent' : 'error' }))
+      // Reset to idle after 4 s so the button reappears
+      setTimeout(() => setResendStates(s => ({ ...s, [ref]: 'idle' })), 4000)
+    } catch {
+      setResendStates(s => ({ ...s, [ref]: 'error' }))
+      setTimeout(() => setResendStates(s => ({ ...s, [ref]: 'idle' })), 4000)
+    }
+  }, [pin])
+
   // ── PIN GATE ──────────────────────────────────────────────────────────────
   if (!pinVerified) {
     return (
@@ -251,6 +272,22 @@ export default function AdminPage() {
       </div>
 
       <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
+
+        {/* Demo mode warning */}
+        {stats?.isDemo && (
+          <div className="bg-[#FCD116]/8 border border-[#FCD116]/25 rounded-lg px-4 py-3 flex gap-3 items-start">
+            <span className="text-[#FCD116] text-base leading-none mt-0.5">⚠</span>
+            <div>
+              <p className="text-[#FCD116] text-xs font-semibold font-mono tracking-wide">DEMO MODE ACTIVE</p>
+              <p className="text-[#FCD116]/60 text-[11px] mt-0.5 leading-relaxed">
+                Bookings are stored in memory only. Each serverless instance has isolated state —
+                data created on one request may not appear on another. Set{' '}
+                <code className="text-[#FCD116]/80">NEXT_PUBLIC_SUPABASE_URL</code> and{' '}
+                <code className="text-[#FCD116]/80">SUPABASE_SERVICE_ROLE_KEY</code> in Vercel to go live.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Stats – auto-refreshes every 10 s */}
         {stats && (
@@ -424,12 +461,30 @@ export default function AdminPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        {b.status === 'confirmed' && (
-                          <button onClick={() => scanRef(b.booking_ref)}
-                            className="text-[10px] bg-[#FCD116]/10 hover:bg-[#FCD116]/20 border border-[#FCD116]/30 text-[#FCD116] px-2.5 py-1 rounded font-mono uppercase tracking-wide transition-colors">
-                            Admit
-                          </button>
-                        )}
+                        <div className="flex items-center justify-end gap-1.5">
+                          {b.status === 'confirmed' && (
+                            <button onClick={() => scanRef(b.booking_ref)}
+                              className="text-[10px] bg-[#FCD116]/10 hover:bg-[#FCD116]/20 border border-[#FCD116]/30 text-[#FCD116] px-2.5 py-1 rounded font-mono uppercase tracking-wide transition-colors">
+                              Admit
+                            </button>
+                          )}
+                          {b.status !== 'cancelled' && (() => {
+                            const rs = resendStates[b.booking_ref] ?? 'idle'
+                            return (
+                              <button
+                                onClick={() => resendEmail(b.booking_ref)}
+                                disabled={rs === 'loading'}
+                                className={`text-[10px] px-2.5 py-1 rounded font-mono uppercase tracking-wide border transition-colors disabled:opacity-40 ${
+                                  rs === 'sent'    ? 'bg-[#006B3F]/15 border-[#006B3F]/30 text-[#00C896]' :
+                                  rs === 'error'   ? 'bg-[#C8102E]/10 border-[#C8102E]/30 text-[#C8102E]' :
+                                  'bg-white/4 border-white/10 text-white/40 hover:text-white/70 hover:border-white/20'
+                                }`}
+                              >
+                                {rs === 'loading' ? '…' : rs === 'sent' ? 'Sent ✓' : rs === 'error' ? 'Failed' : 'Email'}
+                              </button>
+                            )
+                          })()}
+                        </div>
                       </td>
                     </tr>
                   ))}

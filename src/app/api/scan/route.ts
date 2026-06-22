@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { isDemoMode, getDemoBookings, getDemoSeats } from '@/lib/demo-store'
+import { rateLimit, clientIp } from '@/lib/rate-limit'
 
 const EXPECTED_PIN = process.env.USHER_PIN ?? '0000'
 
@@ -11,6 +12,15 @@ const ScanSchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
+  // Brute-force PIN protection: 20 scan attempts per IP per minute
+  const rl = rateLimit(`scan:${clientIp(req)}`, 20, 60 * 1000)
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please slow down.' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfter) } },
+    )
+  }
+
   try {
     const body = await req.json()
     const { bookingRef, pin, usherName } = ScanSchema.parse(body)

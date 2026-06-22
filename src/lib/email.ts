@@ -1,12 +1,33 @@
 import { Resend } from 'resend'
 import type { Booking } from '@/types'
 
+const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
+
 export async function sendTicketEmail(booking: Booking, eventName: string): Promise<void> {
   if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 'YOUR_RESEND_API_KEY') {
     console.log(`[demo] Skipping email to ${booking.attendee_email} — RESEND_API_KEY not set. Ticket ref: ${booking.booking_ref}`)
     return
   }
-  const resend = new Resend(process.env.RESEND_API_KEY)
+
+  // Retry up to 3 times with exponential backoff (1 s, 2 s) so transient
+  // Resend API hiccups don't silently lose a ticket.
+  const MAX_ATTEMPTS = 3
+  let lastErr: unknown
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      await _sendOnce(booking, eventName)
+      return
+    } catch (err) {
+      lastErr = err
+      console.warn(`[email] attempt ${attempt}/${MAX_ATTEMPTS} failed for ${booking.booking_ref}:`, err)
+      if (attempt < MAX_ATTEMPTS) await sleep(1000 * attempt)
+    }
+  }
+  throw lastErr
+}
+
+async function _sendOnce(booking: Booking, eventName: string): Promise<void> {
+  const resend = new Resend(process.env.RESEND_API_KEY!)
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   const ticketUrl = `${appUrl}/ticket?ref=${booking.booking_ref}`
   const seatList = booking.seat_ids.join(' · ')
@@ -155,3 +176,4 @@ export async function sendTicketEmail(booking: Booking, eventName: string): Prom
 </html>`.trim(),
   })
 }
+
