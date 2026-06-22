@@ -16,6 +16,7 @@ import { useEffect, useRef } from 'react'
 export default function LineFormation() {
   const sectionRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const overlayRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const section = sectionRef.current
@@ -41,6 +42,10 @@ export default function LineFormation() {
       const dur = video.duration || 8
       // Stop a hair before the end so the final poster frame stays pinned.
       target = Math.max(0, Math.min(progress * dur, dur - 0.04))
+      // Fade the title overlay out as the poster forms.
+      if (overlayRef.current) {
+        overlayRef.current.style.opacity = String(Math.max(0, 1 - progress * 2))
+      }
     }
 
     const loop = () => {
@@ -96,6 +101,37 @@ export default function LineFormation() {
           preload="auto"
           className="absolute inset-0 z-10 w-full h-full object-cover"
         />
+
+        {/* Title overlay over the opening void — fades out as the poster forms,
+            so the top of the page is never blank. */}
+        <div
+          ref={overlayRef}
+          className="pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center text-center px-6"
+          style={{ opacity: 1 }}
+        >
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <div className="h-px w-10 bg-[#FCD116]/50" />
+            <span className="text-[#FCD116] text-[9px] tracking-[0.45em] uppercase font-medium">Afroweek presents</span>
+            <div className="h-px w-10 bg-[#FCD116]/50" />
+          </div>
+          <h1 className="font-[family-name:var(--font-bebas)] leading-none">
+            <span className="block text-[clamp(52px,11vw,140px)] text-white tracking-[0.05em]">THE LINE</span>
+            <span
+              className="block text-[clamp(52px,11vw,140px)] tracking-[0.05em] -mt-2"
+              style={{
+                background: 'linear-gradient(90deg, #C8102E 0%, #FCD116 50%, #006B3F 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
+              THEY DREW
+            </span>
+          </h1>
+          <p className="text-white/45 text-[10px] md:text-xs tracking-[0.25em] uppercase mt-6 font-mono">
+            Drama · Music · Dance · Choir · Traditional Fashion
+          </p>
+        </div>
 
         {/* Seamless blend — fade the frame edges to pure black so the video
             dissolves into the background with no visible boundary, while the

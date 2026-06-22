@@ -28,46 +28,9 @@ export default function TheLinePage() {
         </Link>
       </div>
 
-      {/* ── INTRO ───────────────────────────────────────────── */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center text-center px-6 bg-black overflow-hidden">
-        <div data-reveal>
-          <div className="flex items-center justify-center gap-3 mb-7">
-            <div className="h-px w-10 bg-[#FCD116]/50" />
-            <span className="text-[#FCD116] text-[9px] tracking-[0.45em] uppercase font-medium">Afroweek presents</span>
-            <div className="h-px w-10 bg-[#FCD116]/50" />
-          </div>
-
-          <h1 className="font-[family-name:var(--font-bebas)] leading-none mb-5">
-            <span className="block text-[clamp(56px,12vw,150px)] text-white tracking-[0.05em]">THE LINE</span>
-            <span
-              className="block text-[clamp(56px,12vw,150px)] tracking-[0.05em] -mt-2"
-              style={{
-                background: 'linear-gradient(90deg, #C8102E 0%, #FCD116 50%, #006B3F 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-              }}
-            >
-              THEY DREW
-            </span>
-          </h1>
-
-          <p className="text-white/50 text-xs tracking-[0.25em] uppercase mb-8 font-mono">
-            Drama · Music · Dance · Choir · Traditional Fashion
-          </p>
-          <p className="text-[#F5F0E8]/65 text-base md:text-lg max-w-xl mx-auto leading-relaxed">
-            A powerful theatrical journey through Africa&rsquo;s past — the rise of great empires, the lines drawn
-            by colonisation, the struggle for liberation, and the enduring strength of African identity.
-          </p>
-        </div>
-
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-pulse">
-          <span className="text-[9px] tracking-[0.35em] uppercase text-white/35 font-mono">Scroll</span>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(252,209,22,0.6)" strokeWidth="2">
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-        </div>
-      </section>
+      {/* ── THE REVEAL: poster forms in slow motion (16:9, full-bleed, seamless) ──
+           Title shows over the opening void, then fades as the poster forms. */}
+      <LineFormation />
 
       {/* ── THE WALK: grandfather & grandson, an endless journey ────────────── */}
       <section className="relative w-full overflow-hidden bg-black">
@@ -75,7 +38,7 @@ export default function TheLinePage() {
         <TheWalk />
 
         {/* Story caption */}
-        <div className="relative z-20 px-6 py-14 text-center bg-black" data-reveal>
+        <div className="relative z-20 px-6 py-14 text-center bg-black">
           <div className="flex items-center justify-center gap-3 mb-5">
             <div className="h-px w-10 bg-[#FCD116]/50" />
             <span className="text-[#FCD116] text-[9px] tracking-[0.45em] uppercase font-medium">A Theatrical Journey</span>
@@ -91,10 +54,6 @@ export default function TheLinePage() {
           </p>
         </div>
       </section>
-
-      {/* ── THE REVEAL: the poster forms in slow motion (16:9, scroll-scrubbed) ──
-           Full-bleed, edges blended into the black background — the finale. */}
-      <LineFormation />
 
       {/* ── OUTRO / CTA ────────────────────────────────────── */}
       <section className="relative flex flex-col items-center justify-center text-center px-6 py-28 bg-black">

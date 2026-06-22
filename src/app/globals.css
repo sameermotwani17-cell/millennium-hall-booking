@@ -241,7 +241,7 @@ input:-webkit-autofill:active {
   width: clamp(120px, 15vw, 240px);
   transform-origin: 50% 100%;   /* scale around the feet so they stay grounded */
   will-change: transform, opacity;
-  animation: walk-across 17s linear infinite;
+  animation: walk-across 22s linear infinite;
 }
 @keyframes walk-across {
   0%   { transform: translateX(-14vw) scale(0.72); opacity: 0; }
@@ -262,22 +262,28 @@ input:-webkit-autofill:active {
   border-radius: 50%;
   background: radial-gradient(ellipse at center, rgba(0,0,0,0.55), rgba(0,0,0,0) 72%);
   filter: blur(2px);
-  animation: walk-shadow 0.52s ease-in-out infinite alternate;
+  /* Pulses twice per stride — biggest/darkest at each footfall. Stays on the
+     ground (it is NOT inside the bob wrapper) so the pair reads as planted. */
+  animation: walk-shadow 0.52s linear infinite;
 }
 @keyframes walk-shadow {
-  from { width: 64%; opacity: 0.55; }
-  to   { width: 57%; opacity: 0.42; }
+  0%, 50%, 100% { width: 66%; opacity: 0.6; }   /* footfall */
+  25%, 75%      { width: 54%; opacity: 0.4; }    /* mid-step */
 }
-/* The bob: a SMALL vertical lift so it reads as a walk, not a float. */
+/* The bob: body dips on each footfall and lifts at mid-step — twice per
+   stride, synced with the two-frame leg swap. This is the walk bounce. */
 .walker-bob {
   position: relative;
   width: 100%;
   transform-origin: 50% 100%;
-  animation: walk-bob 0.52s ease-in-out infinite alternate;
+  animation: walk-bob 0.52s linear infinite;
 }
 @keyframes walk-bob {
-  from { transform: translateY(0); }
-  to   { transform: translateY(-1.6%); }
+  0%   { transform: translateY(0); }       /* footfall A — planted, low */
+  25%  { transform: translateY(-2.8%); }   /* mid-step — lifts */
+  50%  { transform: translateY(0); }       /* footfall B — planted, low */
+  75%  { transform: translateY(-2.8%); }   /* mid-step — lifts */
+  100% { transform: translateY(0); }
 }
 /* Two stride frames cross-fade with hard steps → leg movement.
    Frame A is in flow (defines the box); frame B overlays it exactly. */
