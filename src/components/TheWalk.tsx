@@ -7,6 +7,8 @@
  * walk-b, cut out to transparent PNGs) that translates across a golden-hour
  * savanna and vanishes into a glowing portal on the right — then reappears at
  * the back (far left) and walks again, forever. Pure CSS animation, no video.
+ * The contact shadow stays planted on the ground so they read as walking,
+ * not floating.
  */
 export default function TheWalk() {
   return (
@@ -21,26 +23,29 @@ export default function TheWalk() {
         }}
       />
 
-      {/* Low sun glow near the horizon */}
+      {/* Low sun glow near the horizon, behind the portal */}
       <div
-        className="absolute left-1/2 -translate-x-1/2 pointer-events-none"
+        className="absolute pointer-events-none"
         style={{
-          bottom: '20%',
-          width: '46vw',
-          height: '46vw',
-          background: 'radial-gradient(circle, rgba(255,205,110,0.55) 0%, rgba(255,150,60,0.15) 45%, transparent 65%)',
-          filter: 'blur(18px)',
+          right: '6%',
+          bottom: '14%',
+          width: '34vw',
+          height: '34vw',
+          transform: 'translateX(20%)',
+          background: 'radial-gradient(circle, rgba(255,210,120,0.5) 0%, rgba(255,150,60,0.12) 45%, transparent 62%)',
+          filter: 'blur(14px)',
         }}
       />
 
-      {/* Distant acacia tree silhouettes */}
-      <svg className="absolute left-0 w-full pointer-events-none" style={{ bottom: '19%' }} viewBox="0 0 1200 160" preserveAspectRatio="none" aria-hidden="true">
-        <g fill="#160a05">
-          <g transform="translate(120,30)"><rect x="14" y="40" width="5" height="90" /><ellipse cx="16" cy="40" rx="46" ry="16" /></g>
-          <g transform="translate(420,55) scale(0.7)"><rect x="14" y="40" width="5" height="90" /><ellipse cx="16" cy="40" rx="46" ry="16" /></g>
-          <g transform="translate(980,20) scale(1.15)"><rect x="14" y="40" width="6" height="100" /><ellipse cx="17" cy="40" rx="54" ry="18" /></g>
-          <g transform="translate(720,60) scale(0.6)"><rect x="14" y="40" width="5" height="90" /><ellipse cx="16" cy="40" rx="46" ry="16" /></g>
-        </g>
+      {/* Distant hills rooted on the horizon (the top of the ground band) */}
+      <svg
+        className="absolute left-0 w-full pointer-events-none"
+        style={{ bottom: '22%', height: '14%' }}
+        viewBox="0 0 1200 120"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <path d="M0,120 L0,70 Q150,30 320,58 Q520,92 720,46 Q900,8 1060,52 Q1140,74 1200,60 L1200,120 Z" fill="#1d0f08" opacity="0.85" />
       </svg>
 
       {/* Ground band */}
@@ -52,18 +57,18 @@ export default function TheWalk() {
       <div
         className="absolute pointer-events-none"
         style={{
-          bottom: 0, left: '8%', right: '8%', height: '22%',
-          background: 'radial-gradient(ellipse at 86% 0%, rgba(255,170,80,0.18), transparent 60%)',
+          bottom: 0, left: '6%', right: '6%', height: '22%',
+          background: 'radial-gradient(ellipse at 88% 0%, rgba(255,170,80,0.16), transparent 58%)',
         }}
       />
 
-      {/* The portal */}
+      {/* The portal — standing on the ground */}
       <div className="walk-portal" />
 
-      {/* The walker — game sprite */}
+      {/* The walker — game sprite. Shadow stays on the ground; bodies bob. */}
       <div className="walker">
+        <div className="walk-shadow" />
         <div className="walker-bob">
-          <div className="walk-shadow" />
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/walk-a.png" alt="A grandfather and his grandson walking" className="walk-frame a" />
           {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -205,8 +205,8 @@ input:-webkit-autofill:active {
 /* ─── THE WALK — game-style sprite walking into a portal ───────────────── */
 .walk-portal {
   position: absolute;
-  right: 10%;
-  bottom: 20%;
+  right: 11%;
+  bottom: 13%;
   width: clamp(90px, 11vw, 170px);
   aspect-ratio: 3 / 5;
   border-radius: 50%;
@@ -236,9 +236,10 @@ input:-webkit-autofill:active {
    Sized by WIDTH so the image keeps its intrinsic ratio reliably. */
 .walker {
   position: absolute;
-  bottom: 15%;
+  bottom: 13%;
   left: 0;
   width: clamp(120px, 15vw, 240px);
+  transform-origin: 50% 100%;   /* scale around the feet so they stay grounded */
   will-change: transform, opacity;
   animation: walk-across 17s linear infinite;
 }
@@ -249,15 +250,34 @@ input:-webkit-autofill:active {
   90%  { transform: translateX(82vw)  scale(0.82); opacity: 0; }   /* steps into portal */
   100% { transform: translateX(82vw)  scale(0.6);  opacity: 0; }
 }
-/* Inner handles the vertical walk bob */
+/* Grounded contact shadow — sibling of the bob so it stays planted on the
+   ground while the bodies bob. This is what stops the "floating" look. */
+.walk-shadow {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 64%;
+  height: 5%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0.55), rgba(0,0,0,0) 72%);
+  filter: blur(2px);
+  animation: walk-shadow 0.52s ease-in-out infinite alternate;
+}
+@keyframes walk-shadow {
+  from { width: 64%; opacity: 0.55; }
+  to   { width: 57%; opacity: 0.42; }
+}
+/* The bob: a SMALL vertical lift so it reads as a walk, not a float. */
 .walker-bob {
   position: relative;
   width: 100%;
+  transform-origin: 50% 100%;
   animation: walk-bob 0.52s ease-in-out infinite alternate;
 }
 @keyframes walk-bob {
   from { transform: translateY(0); }
-  to   { transform: translateY(-4%); }
+  to   { transform: translateY(-1.6%); }
 }
 /* Two stride frames cross-fade with hard steps → leg movement.
    Frame A is in flow (defines the box); frame B overlays it exactly. */
@@ -265,28 +285,12 @@ input:-webkit-autofill:active {
   display: block;
   width: 100%;
   height: auto;
-  filter: drop-shadow(0 8px 10px rgba(0,0,0,0.45));
+  filter: drop-shadow(0 3px 4px rgba(0,0,0,0.3));
 }
 .walk-frame.a { position: relative; animation: walk-swap-a 0.52s steps(1) infinite; }
 .walk-frame.b { position: absolute; inset: 0; animation: walk-swap-b 0.52s steps(1) infinite; }
 @keyframes walk-swap-a { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
 @keyframes walk-swap-b { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
-/* Contact shadow on the ground, under the feet */
-.walk-shadow {
-  position: absolute;
-  bottom: 1%;
-  left: 50%;
-  width: 60%;
-  height: 6%;
-  transform: translateX(-50%);
-  background: radial-gradient(ellipse at center, rgba(0,0,0,0.5), rgba(0,0,0,0) 70%);
-  animation: walk-shadow 0.52s ease-in-out infinite alternate;
-  z-index: -1;
-}
-@keyframes walk-shadow {
-  from { opacity: 0.5;  width: 56%; }
-  to   { opacity: 0.34; width: 50%; }
-}
 @media (prefers-reduced-motion: reduce) {
   .walker { animation: none; transform: translateX(34vw) scale(1); opacity: 1; }
   .walker-bob, .walk-frame.a, .walk-frame.b, .walk-shadow, .walk-portal { animation: none; }
